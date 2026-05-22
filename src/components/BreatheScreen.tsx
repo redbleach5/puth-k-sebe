@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { breathingPresets, type BreathingPreset } from "@/lib/data";
 import { useStore } from "@/store/useStore";
+import { usePremium } from "@/hooks/use-premium";
 import { LotusSVG, Ripples, WaveBottom, WaterRipples, FlowingCurves } from "@/components/SvgDecor";
 import { useAudio } from "@/components/AudioProvider";
 
@@ -18,6 +19,7 @@ export default function BreatheScreen() {
   const [totalTime, setTotalTime] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { recordBreathing } = useStore();
+  const { isPremiumOnly, requirePremium, getFeatureLimit } = usePremium();
   const { playInhale, playExhale, playChime } = useAudio();
   const prevPhaseName = useRef("");
 
@@ -93,26 +95,40 @@ export default function BreatheScreen() {
         {/* Preset selector */}
         {phase === "idle" && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
-            {breathingPresets.map((preset) => (
-              <button
-                key={preset.id}
-                onClick={() => setSelectedPreset(preset)}
-                className={`flex items-center gap-3.5 p-4 rounded-xl border transition-all duration-300 cursor-pointer text-left ${
-                  selectedPreset.id === preset.id
-                    ? "premium-card-elevated"
-                    : "premium-card hover:border-[#C9A96E]/25"
-                }`}
-              >
-                <span className="text-2xl opacity-60">{preset.symbol}</span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[14px] font-normal text-foreground/85">{preset.name}</p>
-                  <p className="text-[12px] text-foreground/68 font-normal mt-0.5">{preset.description}</p>
-                </div>
-                <span className="text-[12px] text-foreground/65 font-normal shrink-0">
-                  {preset.phases.map((p) => p.duration).join("-")}
-                </span>
-              </button>
-            ))}
+            {breathingPresets.map((preset, index) => {
+              const isLocked = isPremiumOnly("breathingPresets", index);
+              return (
+                <button
+                  key={preset.id}
+                  onClick={() => {
+                    if (isLocked) {
+                      requirePremium("breathingPresets");
+                      return;
+                    }
+                    setSelectedPreset(preset);
+                  }}
+                  className={`flex items-center gap-3.5 p-4 rounded-xl border transition-all duration-300 cursor-pointer text-left ${
+                    isLocked
+                      ? "border-[#E0D8CC]/20 bg-[#FAF8F5]/50 opacity-60"
+                      : selectedPreset.id === preset.id
+                        ? "premium-card-elevated"
+                        : "premium-card hover:border-[#C9A96E]/25"
+                  }`}
+                >
+                  <span className={`text-2xl ${isLocked ? "opacity-30" : "opacity-60"}`}>{preset.symbol}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className={`text-[14px] font-normal ${isLocked ? "text-foreground/45" : "text-foreground/85"}`}>{preset.name}</p>
+                      {isLocked && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[#C9A96E]/10 text-[#C9A96E] font-medium tracking-wider">ПРЕМИУМ</span>}
+                    </div>
+                    <p className={`text-[12px] ${isLocked ? "text-foreground/35" : "text-foreground/68"} font-normal mt-0.5`}>{preset.description}</p>
+                  </div>
+                  <span className={`text-[12px] ${isLocked ? "text-foreground/35" : "text-foreground/65"} font-normal shrink-0`}>
+                    {preset.phases.map((p) => p.duration).join("-")}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         )}
 

@@ -190,7 +190,9 @@ export const useStore = create<AppState & AppActions>()(
 
         const todayDraws = lastCardDate === today ? cardsDrawnToday : 0;
 
-        if (todayDraws >= 3) return false; // Max 3 per day
+        // Note: The limit check is now done by the calling component via usePremium().checkLimit()
+        // This store method only handles the state update
+        // The hard limit is managed by the premium system (3 for free, Infinity for premium)
 
         const alreadyDrawn = drawnCards.includes(cardId);
         const newDrawnCards = alreadyDrawn ? drawnCards : [...drawnCards, cardId];
@@ -218,10 +220,14 @@ export const useStore = create<AppState & AppActions>()(
       },
 
       canDrawCard: (): boolean => {
+        // Note: This is a basic check. The actual premium-based limit check
+        // should be done via usePremium().checkLimit("cardDrawsPerDay", todayDraws)
+        // This method is kept for backwards compatibility but should not be relied upon
+        // for premium gating.
         const { lastCardDate, cardsDrawnToday } = get();
         const today = getToday();
         const todayDraws = lastCardDate === today ? cardsDrawnToday : 0;
-        return todayDraws < 3;
+        return todayDraws < 3; // Default free limit; premium check done by component
       },
 
       saveJournalEntry: (mood: string, text: string, prompt: string) => {

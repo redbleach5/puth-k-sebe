@@ -13,16 +13,18 @@ export type PremiumFeature =
   | "statsHistory";
 
 interface FeatureLimit {
-  free: number | string;
-  premium: number | string;
+  free: number;
+  premium: number;
+  /** Display label for the limit */
+  label: string;
 }
 
 export const featureLimits: Record<PremiumFeature, FeatureLimit> = {
-  cardDrawsPerDay: { free: 3, premium: Infinity },
-  journalEntries: { free: 30, premium: Infinity },
-  breathingPresets: { free: 3, premium: 5 },
-  testsAvailable: { free: 2, premium: 5 },
-  statsHistory: { free: 7, premium: Infinity }, // days
+  cardDrawsPerDay: { free: 3, premium: Infinity, label: "Карты в день" },
+  journalEntries: { free: 30, premium: Infinity, label: "Записи в дневнике" },
+  breathingPresets: { free: 3, premium: 5, label: "Дыхательные практики" },
+  testsAvailable: { free: 2, premium: 5, label: "Тесты" },
+  statsHistory: { free: 7, premium: Infinity, label: "История статистики (дней)" },
 };
 
 // ─── Hook ─────────────────────────────────────────────────────────────────
@@ -37,25 +39,40 @@ export function registerPaywallCallback(cb: () => void) {
 export function usePremium() {
   const { isPremium } = useAuth();
 
-  const canAccessFeature = useCallback(
-    (feature: PremiumFeature): boolean => {
-      if (isPremium) return true;
-
+  /**
+   * Get the numeric limit for a feature based on the current plan.
+   * Returns Infinity for unlimited.
+   */
+  const getFeatureLimit = useCallback(
+    (feature: PremiumFeature): number => {
       const limit = featureLimits[feature];
-      if (!limit) return true;
-
-      // For features with numeric limits, we just check if the feature is premium-only
-      // The actual limit checking (e.g., how many cards drawn today) should be done
-      // by the component using this hook in conjunction with the store
-      return false; // free users get limited access
+      return isPremium ? limit.premium : limit.free;
     },
     [isPremium]
   );
 
-  const getFeatureLimit = useCallback(
-    (feature: PremiumFeature): number | string => {
+  /**
+   * Check if a specific usage count has exceeded the free limit.
+   * Returns true if the user CAN still use the feature (within limits).
+   */
+  const isWithinLimit = useCallback(
+    (feature: PremiumFeature, currentUsage: number): boolean => {
+      if (isPremium) return true;
       const limit = featureLimits[feature];
-      return isPremium ? limit.premium : limit.free;
+      return currentUsage < limit.free;
+    },
+    [isPremium]
+  );
+
+  /**
+   * Check if a feature requires premium to access at all (limit is 0 for free).
+   */
+  const isPremiumOnly = useCallback(
+    (feature: PremiumFeature, index: number): boolean => {
+      if (isPremium) return false;
+      const limit = featureLimits[feature];
+      // For list-based features (tests, presets), items beyond the free limit are premium-only
+      return index >= limit.free;
     },
     [isPremium]
   );
@@ -66,6 +83,10 @@ export function usePremium() {
     }
   }, []);
 
+  /**
+   * Require premium for a feature. Shows paywall if not premium.
+   * Returns true if the user is premium, false otherwise.
+   */
   const requirePremium = useCallback(
     (feature: PremiumFeature): boolean => {
       if (isPremium) return true;
@@ -75,12 +96,32 @@ export function usePremium() {
     [isPremium, showPaywall]
   );
 
+  /**
+   * Check if user can perform an action that would exceed the free limit.
+   * Shows paywall if limit is reached.
+   * Returns true if the action is allowed.
+   */
+  const checkLimit = useCallback(
+    (feature: PremiumFeature, currentUsage: number): boolean => {
+      if (isPremium) return true;
+      const limit = featureLimits[feature];
+      if (currentUsage >= limit.free) {
+        showPaywall();
+        return false;
+      }
+      return true;
+    },
+    [isPremium, showPaywall]
+  );
+
   return {
     isPremium,
-    canAccessFeature,
     getFeatureLimit,
+    isWithinLimit,
+    isPremiumOnly,
     showPaywall,
     requirePremium,
+    checkLimit,
     featureLimits,
   };
 }

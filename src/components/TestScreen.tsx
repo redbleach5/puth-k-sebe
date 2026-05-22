@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { tests, type TestData, type ResultType } from "@/lib/data";
 import { useStore } from "@/store/useStore";
+import { usePremium } from "@/hooks/use-premium";
 import { MandalaRing, WaveBottom, SacredGeometry, FlowingCurves, OrganicBlob } from "@/components/SvgDecor";
 import { useAudio } from "@/components/AudioProvider";
 
@@ -65,6 +66,7 @@ function ResultView({ result, onBack }: { result: ResultType; onBack: () => void
 
 export default function TestScreen() {
   const { completedTests, completeTest } = useStore();
+  const { isPremiumOnly, getFeatureLimit, requirePremium } = usePremium();
   const { playChime, playSingingBowl } = useAudio();
   const [phase, setPhase] = useState<TestPhase>("select");
   const [activeTest, setActiveTest] = useState<TestData | null>(null);
@@ -73,10 +75,17 @@ export default function TestScreen() {
   const [result, setResult] = useState<ResultType | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
 
-  const startTest = useCallback((test: TestData) => {
+  const freeTestLimit = getFeatureLimit("testsAvailable");
+
+  const startTest = useCallback((test: TestData, testIndex: number) => {
+    // Check if this test is premium-only (beyond free limit)
+    if (isPremiumOnly("testsAvailable", testIndex)) {
+      requirePremium("testsAvailable");
+      return;
+    }
     setActiveTest(test); setQuestionIndex(0); setAnswers([]); setResult(null); setSelected(null); setPhase("quiz");
     playChime(440, 1.5);
-  }, [playChime]);
+  }, [playChime, isPremiumOnly, requirePremium]);
 
   const handleAnswer = useCallback((value: number) => {
     if (!activeTest || selected !== null) return;
@@ -114,21 +123,27 @@ export default function TestScreen() {
           <p className="text-[15px] text-foreground/80 font-normal mb-5">Узнайте себя глубже</p>
 
           <div className="flex flex-col gap-3">
-            {tests.map((test) => {
+            {tests.map((test, index) => {
               const isCompleted = completedTests.includes(test.id);
+              const isLocked = isPremiumOnly("testsAvailable", index);
               return (
-                <motion.button key={test.id} onClick={() => startTest(test)}
-                  className="group flex items-start gap-4 p-5 rounded-xl premium-card hover:border-[#C9A96E]/25 transition-all duration-300 text-left cursor-pointer"
-                  whileTap={{ scale: 0.98 }}
+                <motion.button key={test.id} onClick={() => startTest(test, index)}
+                  className={`group flex items-start gap-4 p-5 rounded-xl transition-all duration-300 text-left cursor-pointer ${
+                    isLocked
+                      ? "border border-[#E0D8CC]/20 bg-[#FAF8F5]/50 opacity-60"
+                      : "premium-card hover:border-[#C9A96E]/25"
+                  }`}
+                  whileTap={!isLocked ? { scale: 0.98 } : {}}
                 >
-                  <span className="text-2xl opacity-60 group-hover:opacity-80 transition-opacity duration-300 mt-0.5">{test.symbol}</span>
+                  <span className={`text-2xl mt-0.5 ${isLocked ? "opacity-30" : "opacity-60 group-hover:opacity-80 transition-opacity duration-300"}`}>{test.symbol}</span>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className="text-[15px] font-medium text-foreground/88">{test.title}</h3>
+                      <h3 className={`text-[15px] font-medium ${isLocked ? "text-foreground/50" : "text-foreground/88"}`}>{test.title}</h3>
                       {isCompleted && <span className="text-[11px] text-[#7A8B6F] font-normal">пройден</span>}
+                      {isLocked && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#C9A96E]/10 text-[#C9A96E] font-medium tracking-wider">ПРЕМИУМ</span>}
                     </div>
-                    <p className="text-[14px] text-foreground/78 font-normal mb-0.5">{test.subtitle}</p>
-                    <p className="text-[13px] text-foreground/68 font-normal leading-relaxed">{test.description}</p>
+                    <p className={`text-[14px] ${isLocked ? "text-foreground/45" : "text-foreground/78"} font-normal mb-0.5`}>{test.subtitle}</p>
+                    <p className={`text-[13px] ${isLocked ? "text-foreground/35" : "text-foreground/68"} font-normal leading-relaxed`}>{test.description}</p>
                   </div>
                 </motion.button>
               );
@@ -136,7 +151,7 @@ export default function TestScreen() {
           </div>
 
           {completedTests.length > 0 && (
-            <p className="text-[13px] text-foreground/70 font-normal mt-5">Пройдено {completedTests.length} из {tests.length}</p>
+            <p className="text-[13px] text-foreground/70 font-normal mt-5">Пройдено {completedTests.length} из {tests.length} · Бесплатно доступно {freeTestLimit} из {tests.length}</p>
           )}
         </div>
       </div>

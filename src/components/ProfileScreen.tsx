@@ -161,7 +161,7 @@ export default function ProfileScreen({ onShowAuthModal, onShowPremiumModal }: P
               />
               <LimitItem
                 label="Статистика"
-                value={`${getFeatureLimit("statsHistory")} дней`}
+                value={getFeatureLimit("statsHistory") === Infinity ? "Безлимит" : `${getFeatureLimit("statsHistory")} дней`}
               />
             </div>
           )}

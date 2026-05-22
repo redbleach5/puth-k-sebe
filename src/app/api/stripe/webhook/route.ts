@@ -64,29 +64,46 @@ export async function POST(req: NextRequest) {
             session.subscription as string
           ) as unknown as StripeSubscriptionData
 
-          await db.subscription.upsert({
+          // Use upsert with userId as the unique key.
+          // The Subscription record should already exist (created at registration or checkout init),
+          // but we handle the create case as well for robustness.
+          const customerId = getCustomerId(stripeSubscription.customer);
+          
+          // First try to update existing subscription
+          const existingSub = await db.subscription.findUnique({
             where: { userId },
-            update: {
-              stripeSubscriptionId: stripeSubscription.id,
-              stripePriceId: stripeSubscription.items.data[0]?.price.id,
-              status: "active",
-              plan: plan,
-              currentPeriodStart: new Date(stripeSubscription.current_period_start * 1000),
-              currentPeriodEnd: new Date(stripeSubscription.current_period_end * 1000),
-              cancelAtPeriodEnd: stripeSubscription.cancel_at_period_end,
-            },
-            create: {
-              userId,
-              stripeCustomerId: getCustomerId(stripeSubscription.customer),
-              stripeSubscriptionId: stripeSubscription.id,
-              stripePriceId: stripeSubscription.items.data[0]?.price.id,
-              status: "active",
-              plan: plan,
-              currentPeriodStart: new Date(stripeSubscription.current_period_start * 1000),
-              currentPeriodEnd: new Date(stripeSubscription.current_period_end * 1000),
-              cancelAtPeriodEnd: stripeSubscription.cancel_at_period_end,
-            },
-          })
+          });
+
+          if (existingSub) {
+            await db.subscription.update({
+              where: { userId },
+              data: {
+                stripeCustomerId: customerId,
+                stripeSubscriptionId: stripeSubscription.id,
+                stripePriceId: stripeSubscription.items.data[0]?.price.id,
+                status: "active",
+                plan: plan,
+                currentPeriodStart: new Date(stripeSubscription.current_period_start * 1000),
+                currentPeriodEnd: new Date(stripeSubscription.current_period_end * 1000),
+                cancelAtPeriodEnd: stripeSubscription.cancel_at_period_end,
+              },
+            });
+          } else {
+            // Create subscription if it doesn't exist (shouldn't happen normally)
+            await db.subscription.create({
+              data: {
+                userId,
+                stripeCustomerId: customerId,
+                stripeSubscriptionId: stripeSubscription.id,
+                stripePriceId: stripeSubscription.items.data[0]?.price.id,
+                status: "active",
+                plan: plan,
+                currentPeriodStart: new Date(stripeSubscription.current_period_start * 1000),
+                currentPeriodEnd: new Date(stripeSubscription.current_period_end * 1000),
+                cancelAtPeriodEnd: stripeSubscription.cancel_at_period_end,
+              },
+            });
+          }
         }
         break
       }

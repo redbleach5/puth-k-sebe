@@ -4,6 +4,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { journalPrompts } from "@/lib/data";
 import { useStore } from "@/store/useStore";
+import { usePremium } from "@/hooks/use-premium";
 import { LeafAccent, WaveBottom, DotGrid, OrganicBlob } from "@/components/SvgDecor";
 import { useAudio } from "@/components/AudioProvider";
 
@@ -17,11 +18,15 @@ const moods = [
 
 export default function JournalScreen() {
   const { journalEntries, saveJournalEntry } = useStore();
+  const { checkLimit, isPremium, getFeatureLimit } = usePremium();
   const { playChime } = useAudio();
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
   const [text, setText] = useState("");
   const [saved, setSaved] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+
+  const journalLimit = getFeatureLimit("journalEntries");
+  const isAtLimit = !isPremium && journalEntries.length >= journalLimit;
 
   const today = new Date();
   const dayOfYear = Math.floor((today.getTime() - new Date(today.getFullYear(), 0, 0).getTime()) / 86400000);
@@ -29,6 +34,10 @@ export default function JournalScreen() {
 
   const handleSave = () => {
     if (!selectedMood || !text.trim()) return;
+
+    // Check journal entry limit
+    if (!checkLimit("journalEntries", journalEntries.length)) return;
+
     saveJournalEntry(selectedMood, text.trim(), todayPrompt);
     playChime(660, 2);
     setSaved(true);
@@ -46,6 +55,16 @@ export default function JournalScreen() {
         <h2 className="text-2xl sm:text-3xl font-light text-foreground mb-1">Дневник</h2>
         <p className="text-[15px] text-foreground/80 font-normal mb-5">Запишите то, что чувствуете</p>
 
+        {/* Journal limit notice */}
+        {isAtLimit && (
+          <div className="mb-5 p-4 rounded-xl border border-[#C9A96E]/20 bg-[#C9A96E]/[0.05]">
+            <p className="text-[14px] text-foreground/75 font-normal">
+              Вы достигли лимита бесплатных записей ({journalLimit}). Оформите подписку для безлимитного дневника.
+            </p>
+          </div>
+        )}
+
+        {!isAtLimit && (
         <AnimatePresence mode="wait">
           {saved ? (
             <motion.div key="saved" className="flex flex-col items-center justify-center py-14" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.8 }}>
@@ -94,6 +113,7 @@ export default function JournalScreen() {
             </motion.div>
           )}
         </AnimatePresence>
+        )}
 
         {/* History */}
         {journalEntries.length > 0 && (

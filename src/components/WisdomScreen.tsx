@@ -4,11 +4,13 @@ import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { oracleCards, type OracleCard } from "@/lib/data";
 import { useStore } from "@/store/useStore";
+import { usePremium } from "@/hooks/use-premium";
 import { MandalaRing, FlowingCurves, WaveBottom, SacredGeometry, OrganicBlob } from "@/components/SvgDecor";
 import { useAudio } from "@/components/AudioProvider";
 
 export default function WisdomScreen() {
-  const { drawnCards, drawCard, canDrawCard, lastCardDate, cardsDrawnToday } = useStore();
+  const { drawnCards, drawCard, lastCardDate, cardsDrawnToday } = useStore();
+  const { getFeatureLimit, checkLimit, isPremium } = usePremium();
   const [currentCard, setCurrentCard] = useState<OracleCard | null>(null);
   const [isFlipped, setIsFlipped] = useState(false);
   const [showDeep, setShowDeep] = useState(false);
@@ -16,12 +18,17 @@ export default function WisdomScreen() {
 
   const today = new Date().toISOString().split("T")[0];
   const todayDraws = lastCardDate === today ? cardsDrawnToday : 0;
-  const remainingDraws = 3 - todayDraws;
+  const cardLimit = getFeatureLimit("cardDrawsPerDay");
+  const remainingDraws = isPremium ? Infinity : cardLimit - todayDraws;
 
   const { playSingingBowl, playChime } = useAudio();
 
+  const canDraw = todayDraws < cardLimit;
+
   const handleDraw = useCallback(() => {
-    if (!canDrawCard()) return;
+    // Premium check: show paywall if limit reached
+    if (!checkLimit("cardDrawsPerDay", todayDraws)) return;
+
     const unseen = oracleCards.filter((c) => !drawnCards.includes(c.id));
     const pool = unseen.length > 0 ? unseen : oracleCards;
     const card = pool[Math.floor(Math.random() * pool.length)];
@@ -32,7 +39,7 @@ export default function WisdomScreen() {
     playSingingBowl(396);
     setTimeout(() => setIsFlipped(true), 100);
     drawCard(card.id);
-  }, [canDrawCard, drawnCards, drawCard, playSingingBowl]);
+  }, [checkLimit, todayDraws, drawnCards, drawCard, playSingingBowl]);
 
   const handleShowDeep = useCallback(() => {
     setShowDeep(true);
@@ -58,12 +65,20 @@ export default function WisdomScreen() {
         {/* Remaining draws */}
         <div className="flex items-center gap-3 mb-5">
           <div className="flex items-center gap-2">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <span key={i} className={`text-sm ${i < remainingDraws ? "text-[#C9A96E]/70" : "text-[#C9A96E]/20"}`}>✦</span>
+            {Array.from({ length: isPremium ? Math.min(todayDraws + 1, 5) : cardLimit }).map((_, i) => (
+              <span key={i} className={`text-sm ${i < (isPremium ? todayDraws : cardLimit - remainingDraws) ? "text-[#C9A96E]/20" : "text-[#C9A96E]/70"}`}>✦</span>
             ))}
+            {isPremium && todayDraws >= 5 && (
+              <span className="text-[13px] text-[#C9A96E]/70">+</span>
+            )}
           </div>
           <span className="text-[13px] text-foreground/72 font-normal">
-            {remainingDraws} осталось сегодня
+            {isPremium
+              ? `${todayDraws} вытянуть сегодня · безлимит`
+              : remainingDraws > 0
+                ? `${remainingDraws} осталось сегодня`
+                : "Лимит на сегодня исчерпан"
+            }
           </span>
         </div>
 
@@ -144,7 +159,10 @@ export default function WisdomScreen() {
                   Нажмите кнопку ниже, чтобы вытянуть карту. Каждая карта несёт послание, актуальное именно сейчас.
                 </p>
                 <p className="text-[14px] text-foreground/68 font-normal leading-relaxed mt-3">
-                  В день можно вытянуть до трёх карт. Каждая уникальна и пополняет вашу коллекцию.
+                  {isPremium
+                    ? "Как премиум-пользователь, вы можете вытягивать карты без ограничений."
+                    : "В день можно вытянуть до трёх карт. Оформите подписку для безлимитного доступа."
+                  }
                 </p>
               </div>
             )}
@@ -155,15 +173,15 @@ export default function WisdomScreen() {
         <div className="mt-6">
           <motion.button
             onClick={handleDraw}
-            disabled={!canDrawCard()}
+            disabled={!canDraw}
             className={`px-9 py-3.5 text-[14px] font-normal tracking-[0.12em] rounded-full transition-all duration-300 cursor-pointer ${
-              canDrawCard()
+              canDraw
                 ? "text-foreground/80 border border-[#C9A96E]/30 hover:border-[#C9A96E]/50"
                 : "text-foreground/38 border border-[#E0D8CC]/25 cursor-not-allowed"
             }`}
-            whileTap={canDrawCard() ? { scale: 0.96 } : {}}
+            whileTap={canDraw ? { scale: 0.96 } : {}}
           >
-            {canDrawCard() ? "Вытянуть карту" : "Завтра новые карты"}
+            {canDraw ? "Вытянуть карту" : isPremium ? "Загрузка..." : "Обновите для безлимита"}
           </motion.button>
         </div>
 
