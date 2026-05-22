@@ -99,7 +99,7 @@ export default function JournalScreen() {
                         selectedMood === mood.value ? "premium-card-elevated" : "border border-transparent hover:bg-[#C9A96E]/[0.04]"
                       }`}
                     >
-                      <span className={`text-xl transition-all duration-300 ${selectedMood === mood.value ? "scale-115" : "opacity-65"}`} style={{ color: mood.color }}>{mood.symbol}</span>
+                      <span className={`text-xl transition-all duration-300 ${selectedMood === mood.value ? "scale-[1.15]" : "opacity-65"}`} style={{ color: mood.color }}>{mood.symbol}</span>
                       <span className="text-[11px] sm:text-[12px] text-foreground/72 font-normal">{mood.label}</span>
                     </button>
                   ))}

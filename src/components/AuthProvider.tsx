@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import { SessionProvider, useSession, signIn, signOut } from "next-auth/react";
-import { useStore } from "@/store/useStore";
+import { useStore, type JournalEntry, type BreathingSession } from "@/store/useStore";
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -199,6 +199,12 @@ function AuthContextInner({ children }: { children: ReactNode }) {
       // Only overwrite local state if server has newer data
       // (simple heuristic: compare XP)
       if (data.xp > store.xp) {
+        // Safely parse JSON fields — corrupted data won't crash the app
+        const safeParse = <T,>(str: string | undefined | null, fallback: T): T => {
+          if (!str) return fallback;
+          try { return JSON.parse(str) as T; } catch { return fallback; }
+        };
+
         store.setHasHydrated(false); // Temporarily allow overwrite
         useStore.setState({
           xp: data.xp ?? 0,
@@ -206,13 +212,13 @@ function AuthContextInner({ children }: { children: ReactNode }) {
             count: data.streakCount ?? 0,
             lastDate: data.streakLastDate ?? "",
           },
-          completedTests: JSON.parse(data.completedTests || "[]"),
-          drawnCards: JSON.parse(data.drawnCards || "[]"),
+          completedTests: safeParse<string[]>(data.completedTests, []),
+          drawnCards: safeParse<string[]>(data.drawnCards, []),
           lastCardDate: data.lastCardDate ?? "",
           cardsDrawnToday: data.cardsDrawnToday ?? 0,
-          journalEntries: JSON.parse(data.journalEntries || "[]"),
-          breathingSessions: JSON.parse(data.breathingSessions || "[]"),
-          unlockedAchievements: JSON.parse(data.unlockedAchievements || "[]"),
+          journalEntries: safeParse<JournalEntry[]>(data.journalEntries, []),
+          breathingSessions: safeParse<BreathingSession[]>(data.breathingSessions, []),
+          unlockedAchievements: safeParse<string[]>(data.unlockedAchievements, []),
           lastVisit: data.lastVisit ?? "",
         });
         store.setHasHydrated(true);

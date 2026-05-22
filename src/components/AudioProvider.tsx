@@ -61,15 +61,22 @@ export function AudioProvider({ children }: { children: ReactNode }) {
             }
           }
           // Remove listener after first gesture
+          cleanup();
+        };
+
+        const cleanup = () => {
           document.removeEventListener("click", enableOnGesture);
           document.removeEventListener("keydown", enableOnGesture);
           document.removeEventListener("touchstart", enableOnGesture);
           listenerAttached.current = false;
         };
 
-        document.addEventListener("click", enableOnGesture, { once: false });
-        document.addEventListener("keydown", enableOnGesture, { once: false });
-        document.addEventListener("touchstart", enableOnGesture, { once: false });
+        document.addEventListener("click", enableOnGesture);
+        document.addEventListener("keydown", enableOnGesture);
+        document.addEventListener("touchstart", enableOnGesture);
+
+        // Cleanup on unmount if gesture hasn't happened yet
+        return cleanup;
       }
     }
   }, []);

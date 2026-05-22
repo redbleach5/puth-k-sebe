@@ -15,6 +15,7 @@ import { useStore } from "@/store/useStore";
 import OnboardingHints from "@/components/OnboardingHints";
 import AudioToggle from "@/components/AudioToggle";
 import { useAudio } from "@/components/AudioProvider";
+import { useAuth } from "@/components/AuthProvider";
 import { registerPaywallCallback } from "@/hooks/use-premium";
 import type { SoundscapeId } from "@/lib/audioEngine";
 
@@ -112,6 +113,7 @@ export default function MeditationApp() {
   const [mounted, setMounted] = useState(false);
   const { checkStreak, _hasHydrated } = useStore();
   const { switchSoundscape, playTransition } = useAudio();
+  const { refreshSubscription } = useAuth();
 
   // Modal state
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -128,8 +130,10 @@ export default function MeditationApp() {
     if (params.get("subscription") === "success") {
       // Clean up URL
       window.history.replaceState({}, "", "/");
+      // Refresh subscription status so premium features unlock immediately
+      refreshSubscription();
     }
-  }, []);
+  }, [refreshSubscription]);
 
   // Wait for client-side mount + store hydration to prevent hydration mismatches
   useEffect(() => {

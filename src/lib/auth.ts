@@ -65,9 +65,11 @@ export const authOptions: NextAuthOptions = {
     strategy: "jwt",
   },
 
-  pages: {
-    signIn: "/auth/signin",
-  },
+  // Don't set a custom signIn page — we use our own AuthModal component
+  // If we set pages.signIn, NextAuth redirects there on auth errors (404)
+  // pages: {
+  //   signIn: "/auth/signin",
+  // },
 
   callbacks: {
     async jwt({ token, user, trigger }) {

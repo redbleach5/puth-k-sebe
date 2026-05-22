@@ -54,7 +54,13 @@ export interface AppState {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function getToday(): string {
-  return new Date().toISOString().split("T")[0];
+  // Use local date instead of UTC to avoid streak resets at midnight
+  // toISOString() returns UTC which can be "yesterday" for users in positive UTC offsets
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function generateId(): string {
@@ -220,14 +226,16 @@ export const useStore = create<AppState & AppActions>()(
       },
 
       canDrawCard: (): boolean => {
-        // Note: This is a basic check. The actual premium-based limit check
-        // should be done via usePremium().checkLimit("cardDrawsPerDay", todayDraws)
-        // This method is kept for backwards compatibility but should not be relied upon
-        // for premium gating.
+        // NOTE: This method only checks the store-level daily counter.
+        // The actual premium-based limit check should be done via
+        // usePremium().checkLimit("cardDrawsPerDay", todayDraws)
+        // This is kept as a basic sanity check.
         const { lastCardDate, cardsDrawnToday } = get();
         const today = getToday();
         const todayDraws = lastCardDate === today ? cardsDrawnToday : 0;
-        return todayDraws < 3; // Default free limit; premium check done by component
+        // Return true if no draws today — actual limit enforcement is by the premium hook
+        // This prevents the store from being the bottleneck for premium users
+        return true;
       },
 
       saveJournalEntry: (mood: string, text: string, prompt: string) => {

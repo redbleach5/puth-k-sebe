@@ -85,7 +85,7 @@ export default function WisdomScreen() {
         {/* Card + details */}
         <div className="flex flex-col lg:flex-row gap-5 lg:gap-7 items-start">
           {/* Card */}
-          <div className="relative w-56 h-76 sm:w-64 sm:h-84 mx-auto lg:mx-0 shrink-0" style={{ perspective: "1000px" }}>
+          <div className="relative w-56 h-[19rem] sm:w-64 sm:h-[21rem] mx-auto lg:mx-0 shrink-0" style={{ perspective: "1000px" }}>
             {currentCard ? (
               <motion.div
                 className="w-full h-full relative"
@@ -120,7 +120,7 @@ export default function WisdomScreen() {
               </motion.div>
             ) : (
               <div className="w-full h-full rounded-xl premium-card flex items-center justify-center">
-                <span className="text-2xl opacity-18">✦</span>
+                <span className="text-2xl opacity-[0.18]">✦</span>
               </div>
             )}
           </div>

@@ -41,7 +41,7 @@ export default function BottomNav({
               }`}
               title={tab.label}
             >
-              <span className={`text-lg transition-all duration-300 ${active === tab.id ? "scale-115" : ""}`}>
+              <span className={`text-lg transition-all duration-300 ${active === tab.id ? "scale-[1.15]" : ""}`}>
                 {tab.icon}
               </span>
               <span className="text-[10px] font-normal tracking-wider">{tab.label}</span>
@@ -73,7 +73,7 @@ export default function BottomNav({
                   : "text-[#8A8478]/65 hover:text-[#8A8478]/90"
               }`}
             >
-              <span className={`text-lg transition-all duration-300 ${active === tab.id ? "scale-115" : ""}`}>
+              <span className={`text-lg transition-all duration-300 ${active === tab.id ? "scale-[1.15]" : ""}`}>
                 {tab.icon}
               </span>
               <span className="text-[10px] font-normal tracking-wider">{tab.label}</span>
