@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { tests, type TestData, type ResultType } from "@/lib/data";
 import { useStore } from "@/store/useStore";
 import { MandalaRing, WaveBottom, SacredGeometry, FlowingCurves, OrganicBlob } from "@/components/SvgDecor";
+import { useAudio } from "@/components/AudioProvider";
 
 type TestPhase = "select" | "quiz" | "transition" | "result";
 
@@ -64,6 +65,7 @@ function ResultView({ result, onBack }: { result: ResultType; onBack: () => void
 
 export default function TestScreen() {
   const { completedTests, completeTest } = useStore();
+  const { playChime, playSingingBowl } = useAudio();
   const [phase, setPhase] = useState<TestPhase>("select");
   const [activeTest, setActiveTest] = useState<TestData | null>(null);
   const [questionIndex, setQuestionIndex] = useState(0);
@@ -73,7 +75,8 @@ export default function TestScreen() {
 
   const startTest = useCallback((test: TestData) => {
     setActiveTest(test); setQuestionIndex(0); setAnswers([]); setResult(null); setSelected(null); setPhase("quiz");
-  }, []);
+    playChime(440, 1.5);
+  }, [playChime]);
 
   const handleAnswer = useCallback((value: number) => {
     if (!activeTest || selected !== null) return;
@@ -90,6 +93,7 @@ export default function TestScreen() {
           const maxIndex = counts.indexOf(Math.max(...counts));
           const r = activeTest.results[maxIndex];
           setResult(r); completeTest(activeTest.id); setPhase("result");
+          playSingingBowl(528);
         }, 2500);
       }
     }, 700);

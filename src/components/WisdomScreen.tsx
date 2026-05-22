@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { oracleCards, type OracleCard } from "@/lib/data";
 import { useStore } from "@/store/useStore";
 import { MandalaRing, FlowingCurves, WaveBottom, SacredGeometry, OrganicBlob } from "@/components/SvgDecor";
+import { useAudio } from "@/components/AudioProvider";
 
 export default function WisdomScreen() {
   const { drawnCards, drawCard, canDrawCard, lastCardDate, cardsDrawnToday } = useStore();
@@ -17,6 +18,8 @@ export default function WisdomScreen() {
   const todayDraws = lastCardDate === today ? cardsDrawnToday : 0;
   const remainingDraws = 3 - todayDraws;
 
+  const { playSingingBowl, playChime } = useAudio();
+
   const handleDraw = useCallback(() => {
     if (!canDrawCard()) return;
     const unseen = oracleCards.filter((c) => !drawnCards.includes(c.id));
@@ -26,14 +29,16 @@ export default function WisdomScreen() {
     setIsFlipped(false);
     setShowDeep(false);
     setShowBut(false);
+    playSingingBowl(396);
     setTimeout(() => setIsFlipped(true), 100);
     drawCard(card.id);
-  }, [canDrawCard, drawnCards, drawCard]);
+  }, [canDrawCard, drawnCards, drawCard, playSingingBowl]);
 
   const handleShowDeep = useCallback(() => {
     setShowDeep(true);
+    playChime(528, 2);
     setTimeout(() => setShowBut(true), 3000);
-  }, []);
+  }, [playChime]);
 
   return (
     <div className="relative flex flex-col items-center px-4 sm:px-6 lg:px-10 pt-5 lg:pt-8 pb-24 lg:pb-8 min-h-screen">

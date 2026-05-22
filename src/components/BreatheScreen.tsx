@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { breathingPresets, type BreathingPreset } from "@/lib/data";
 import { useStore } from "@/store/useStore";
 import { LotusSVG, Ripples, WaveBottom, WaterRipples, FlowingCurves } from "@/components/SvgDecor";
+import { useAudio } from "@/components/AudioProvider";
 
 type BreathePhase = "idle" | "running" | "complete";
 
@@ -17,6 +18,8 @@ export default function BreatheScreen() {
   const [totalTime, setTotalTime] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { recordBreathing } = useStore();
+  const { playInhale, playExhale, playChime } = useAudio();
+  const prevPhaseName = useRef("");
 
   const currentPhase = selectedPreset.phases[currentPhaseIndex] || selectedPreset.phases[0];
   const progress = currentPhase.duration > 0 ? timeInPhase / currentPhase.duration : 0;
@@ -27,7 +30,9 @@ export default function BreatheScreen() {
 
   const start = useCallback(() => {
     setPhase("running"); setCurrentPhaseIndex(0); setTimeInPhase(0); setCycles(0); setTotalTime(0);
-  }, []);
+    prevPhaseName.current = "";
+    playChime(330, 1.5);
+  }, [playChime]);
 
   useEffect(() => {
     if (phase !== "running") return;
@@ -48,6 +53,16 @@ export default function BreatheScreen() {
     }, 100);
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [phase, currentPhaseIndex, currentPhase.duration, selectedPreset.phases.length]);
+
+  // Play breath phase sounds
+  useEffect(() => {
+    if (phase !== "running") return;
+    if (prevPhaseName.current !== currentPhase.name) {
+      prevPhaseName.current = currentPhase.name;
+      if (currentPhase.name === "Вдох") playInhale();
+      else if (currentPhase.name === "Выдох") playExhale();
+    }
+  }, [phase, currentPhase.name, playInhale, playExhale]);
 
   const handleStop = useCallback(() => {
     stop();

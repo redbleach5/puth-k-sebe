@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { journalPrompts } from "@/lib/data";
 import { useStore } from "@/store/useStore";
 import { LeafAccent, WaveBottom, DotGrid, OrganicBlob } from "@/components/SvgDecor";
+import { useAudio } from "@/components/AudioProvider";
 
 const moods = [
   { symbol: "✦", label: "Сияние", value: "radiant", color: "#C9A96E" },
@@ -16,6 +17,7 @@ const moods = [
 
 export default function JournalScreen() {
   const { journalEntries, saveJournalEntry } = useStore();
+  const { playChime } = useAudio();
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
   const [text, setText] = useState("");
   const [saved, setSaved] = useState(false);
@@ -28,6 +30,7 @@ export default function JournalScreen() {
   const handleSave = () => {
     if (!selectedMood || !text.trim()) return;
     saveJournalEntry(selectedMood, text.trim(), todayPrompt);
+    playChime(660, 2);
     setSaved(true);
     setTimeout(() => { setSelectedMood(null); setText(""); setSaved(false); }, 2000);
   };

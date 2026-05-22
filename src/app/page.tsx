@@ -11,6 +11,9 @@ import JournalScreen from "@/components/JournalScreen";
 import ProfileScreen from "@/components/ProfileScreen";
 import { useStore } from "@/store/useStore";
 import OnboardingHints from "@/components/OnboardingHints";
+import AudioToggle from "@/components/AudioToggle";
+import { useAudio } from "@/components/AudioProvider";
+import type { SoundscapeId } from "@/lib/audioEngine";
 
 // Ambient floating particles (canvas-based)
 function AmbientCanvas() {
@@ -74,15 +77,38 @@ function AmbientCanvas() {
   return null;
 }
 
+const screenToSoundscape: Record<Screen, SoundscapeId> = {
+  home: "home",
+  breathe: "breathe",
+  test: "test",
+  wisdom: "wisdom",
+  journal: "journal",
+  profile: "profile",
+};
+
 export default function MeditationApp() {
   const [activeScreen, setActiveScreen] = useState<Screen>("home");
   const { checkStreak } = useStore();
+  const { switchSoundscape, playTransition } = useAudio();
 
   useEffect(() => {
     checkStreak();
   }, [checkStreak]);
 
+  // Switch soundscape when screen changes
+  useEffect(() => {
+    switchSoundscape(screenToSoundscape[activeScreen]);
+  }, [activeScreen, switchSoundscape]);
+
+  const handleScreenChange = (screen: Screen) => {
+    if (screen !== activeScreen) {
+      playTransition();
+    }
+    setActiveScreen(screen);
+  };
+
   const handleHomeNavigate = (screen: "breathe" | "test" | "wisdom" | "journal") => {
+    playTransition();
     setActiveScreen(screen);
   };
 
@@ -119,7 +145,10 @@ export default function MeditationApp() {
       </div>
 
       {/* Navigation */}
-      <BottomNav active={activeScreen} onChange={setActiveScreen} />
+      <BottomNav active={activeScreen} onChange={handleScreenChange} />
+
+      {/* Audio toggle */}
+      <AudioToggle />
 
       {/* Onboarding hints overlay */}
       <OnboardingHints />
