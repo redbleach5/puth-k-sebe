@@ -86,19 +86,47 @@ const screenToSoundscape: Record<Screen, SoundscapeId> = {
   profile: "profile",
 };
 
+// Loading state shown during SSR and initial hydration — same on server and client
+function LoadingShell() {
+  return (
+    <div className="relative min-h-screen bg-[#FAF8F5] overflow-x-hidden flex items-center justify-center">
+      <div className="fixed inset-0 pointer-events-none" style={{ zIndex: 0 }}>
+        <div className="absolute top-[-10%] left-[15%] w-[500px] h-[500px] bg-[#C9A96E]/[0.04] rounded-full blur-[120px]" />
+        <div className="absolute bottom-[-10%] right-[15%] w-[500px] h-[500px] bg-[#7A8B6F]/[0.05] rounded-full blur-[120px]" />
+      </div>
+      <div className="flex flex-col items-center gap-3" style={{ zIndex: 2 }}>
+        <div className="w-10 h-10 rounded-full border border-[#C9A96E]/30 flex items-center justify-center gentle-pulse">
+          <span className="text-[#C9A96E] text-lg">○</span>
+        </div>
+        <p className="text-[13px] text-foreground/55 font-normal tracking-wider">Загрузка...</p>
+      </div>
+    </div>
+  );
+}
+
 export default function MeditationApp() {
   const [activeScreen, setActiveScreen] = useState<Screen>("home");
-  const { checkStreak } = useStore();
+  const [mounted, setMounted] = useState(false);
+  const { checkStreak, _hasHydrated } = useStore();
   const { switchSoundscape, playTransition } = useAudio();
 
+  // Wait for client-side mount + store hydration to prevent hydration mismatches
   useEffect(() => {
-    checkStreak();
-  }, [checkStreak]);
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (mounted && _hasHydrated) {
+      checkStreak();
+    }
+  }, [mounted, _hasHydrated, checkStreak]);
 
   // Switch soundscape when screen changes
   useEffect(() => {
-    switchSoundscape(screenToSoundscape[activeScreen]);
-  }, [activeScreen, switchSoundscape]);
+    if (mounted) {
+      switchSoundscape(screenToSoundscape[activeScreen]);
+    }
+  }, [activeScreen, switchSoundscape, mounted]);
 
   const handleScreenChange = (screen: Screen) => {
     if (screen !== activeScreen) {
@@ -111,6 +139,11 @@ export default function MeditationApp() {
     playTransition();
     setActiveScreen(screen);
   };
+
+  // During SSR and initial hydration, render a static shell to avoid mismatches
+  if (!mounted || !_hasHydrated) {
+    return <LoadingShell />;
+  }
 
   return (
     <div className="relative min-h-screen bg-[#FAF8F5] overflow-x-hidden">

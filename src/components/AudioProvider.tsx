@@ -25,23 +25,53 @@ export function AudioProvider({ children }: { children: ReactNode }) {
   const [volume, setVolumeState] = useState(0.35);
   const [currentSoundscape, setCurrentSoundscape] = useState<SoundscapeId>("silence");
   const [analyserNode, setAnalyserNode] = useState<AnalyserNode | null>(null);
-  const initialLoad = useRef(true);
 
-  // Persist audio preference
+  // Track preference — but do NOT auto-enable audio (browser autoplay policy)
+  const pendingEnable = useRef(false);
+  const listenerAttached = useRef(false);
+
+  // Load saved preferences on mount (but don't enable audio yet)
   useEffect(() => {
-    const saved = localStorage.getItem("puth-audio-enabled");
     const savedVol = localStorage.getItem("puth-audio-volume");
-    if (saved === "true") {
-      audioEngine.enable();
-      setEnabled(true);
-      setAnalyserNode(audioEngine.analyserNode);
-    }
     if (savedVol) {
       const v = parseFloat(savedVol);
       audioEngine.setVolume(v);
       setVolumeState(v);
     }
-    initialLoad.current = false;
+
+    // If user had audio enabled last time, defer enabling to first user gesture
+    const saved = localStorage.getItem("puth-audio-enabled");
+    if (saved === "true") {
+      pendingEnable.current = true;
+
+      // Set up a one-time listener to enable audio on first user interaction
+      if (!listenerAttached.current) {
+        listenerAttached.current = true;
+        const enableOnGesture = () => {
+          if (pendingEnable.current) {
+            pendingEnable.current = false;
+            audioEngine.enable();
+            setEnabled(true);
+            setAnalyserNode(audioEngine.analyserNode);
+            // Resume current soundscape if one was set
+            const savedSoundscape = localStorage.getItem("puth-audio-soundscape") as SoundscapeId | null;
+            if (savedSoundscape && savedSoundscape !== "silence") {
+              setCurrentSoundscape(savedSoundscape);
+              audioEngine.switchSoundscape(savedSoundscape);
+            }
+          }
+          // Remove listener after first gesture
+          document.removeEventListener("click", enableOnGesture);
+          document.removeEventListener("keydown", enableOnGesture);
+          document.removeEventListener("touchstart", enableOnGesture);
+          listenerAttached.current = false;
+        };
+
+        document.addEventListener("click", enableOnGesture, { once: false });
+        document.addEventListener("keydown", enableOnGesture, { once: false });
+        document.addEventListener("touchstart", enableOnGesture, { once: false });
+      }
+    }
   }, []);
 
   const toggle = useCallback(() => {
@@ -50,7 +80,9 @@ export function AudioProvider({ children }: { children: ReactNode }) {
       setEnabled(false);
       setAnalyserNode(null);
       localStorage.setItem("puth-audio-enabled", "false");
+      pendingEnable.current = false;
     } else {
+      // This is always a user gesture (click on toggle button)
       audioEngine.enable();
       setEnabled(true);
       setAnalyserNode(audioEngine.analyserNode);
@@ -70,6 +102,7 @@ export function AudioProvider({ children }: { children: ReactNode }) {
 
   const switchSoundscape = useCallback((id: SoundscapeId) => {
     setCurrentSoundscape(id);
+    localStorage.setItem("puth-audio-soundscape", id);
     audioEngine.switchSoundscape(id);
   }, []);
 

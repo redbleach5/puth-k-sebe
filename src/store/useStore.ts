@@ -47,6 +47,8 @@ export interface AppState {
   unlockedAchievements: string[];
   // Last visit
   lastVisit: string;
+  // Hydration flag (not persisted)
+  _hasHydrated: boolean;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -73,6 +75,7 @@ interface AppActions {
   getTodayAffirmation: (totalAffirmations: number) => number;
   checkAchievements: (state: { streak: number; totalBreathing: number; testsCompleted: number; cardsDrawn: number; journalEntries: number }) => string[];
   reset: () => void;
+  setHasHydrated: (v: boolean) => void;
 }
 
 const initialState: AppState = {
@@ -88,12 +91,17 @@ const initialState: AppState = {
   todayAffirmationIndex: 0,
   unlockedAchievements: [],
   lastVisit: "",
+  _hasHydrated: false,
 };
 
 export const useStore = create<AppState & AppActions>()(
   persist(
     (set, get) => ({
       ...initialState,
+
+      setHasHydrated: (v: boolean) => {
+        set({ _hasHydrated: v });
+      },
 
       addXP: (amount: number) => {
         set((state) => ({ xp: state.xp + amount }));
@@ -303,11 +311,23 @@ export const useStore = create<AppState & AppActions>()(
       },
 
       reset: () => {
-        set(initialState);
+        set({ ...initialState, _hasHydrated: true });
       },
     }),
     {
       name: "puth-k-sebe-storage",
+      partialize: (state) => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { _hasHydrated, ...rest } = state;
+        return rest as AppState;
+      },
+      onRehydrateStorage: () => {
+        return (state) => {
+          if (state) {
+            state._hasHydrated = true;
+          }
+        };
+      },
     }
   )
 );

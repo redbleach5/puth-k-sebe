@@ -45,31 +45,49 @@ class MeditationAudioEngine {
   // ─── Context setup ────────────────────────────────────────────────────────
 
   private ensureContext(): AudioContext {
-    if (!this.ctx) this.ctx = new AudioContext();
-    if (this.ctx.state === "suspended") this.ctx.resume();
+    if (!this.ctx) {
+      try {
+        this.ctx = new AudioContext();
+      } catch {
+        // AudioContext not available (SSR or unsupported browser)
+        throw new Error("AudioContext not available");
+      }
+    }
+    if (this.ctx.state === "suspended") {
+      // resume() must be called from a user gesture.
+      // If we're not in a gesture context, this will fail silently.
+      this.ctx.resume().catch(() => {
+        console.warn("AudioContext resume blocked by browser autoplay policy. Will resume on next user interaction.");
+      });
+    }
     return this.ctx;
   }
 
   enable() {
     this._enabled = true;
-    const ctx = this.ensureContext();
+    try {
+      const ctx = this.ensureContext();
 
-    if (!this.masterGain) {
-      this.masterGain = ctx.createGain();
-      this.masterGain.gain.value = this._volume;
-      this.masterGain.connect(ctx.destination);
-    }
+      if (!this.masterGain) {
+        this.masterGain = ctx.createGain();
+        this.masterGain.gain.value = this._volume;
+        this.masterGain.connect(ctx.destination);
+      }
 
-    if (!this.analyser) {
-      this.analyser = ctx.createAnalyser();
-      this.analyser.fftSize = 256;
-      this.analyser.smoothingTimeConstant = 0.88;
-      this.masterGain.connect(this.analyser);
-    }
+      if (!this.analyser) {
+        this.analyser = ctx.createAnalyser();
+        this.analyser.fftSize = 256;
+        this.analyser.smoothingTimeConstant = 0.88;
+        this.masterGain.connect(this.analyser);
+      }
 
-    // Start playing current soundscape if one was set
-    if (this.currentSoundscape !== "silence") {
-      this.startPlayback(this.currentSoundscape);
+      // Start playing current soundscape if one was set
+      if (this.currentSoundscape !== "silence") {
+        this.startPlayback(this.currentSoundscape);
+      }
+    } catch {
+      console.warn("AudioContext could not be created. Audio will not be available.");
+      this._enabled = false;
     }
   }
 
