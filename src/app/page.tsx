@@ -57,7 +57,7 @@ function AmbientCanvas() {
         if (p.life >= p.max) { ps.splice(i, 1); continue; }
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.s, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(201,169,110,${p.o * 0.5})`;
+        ctx.fillStyle = `rgba(201,169,110,${p.o * 0.7})`;
         ctx.fill();
       }
       animId = requestAnimationFrame(animate);
@@ -90,14 +90,16 @@ export default function MeditationApp() {
     <div className="relative min-h-screen bg-[#FAF8F5] overflow-x-hidden">
       {/* Background gradients */}
       <div className="fixed inset-0 pointer-events-none" style={{ zIndex: 0 }}>
-        <div className="absolute top-[-10%] left-[15%] w-[500px] h-[500px] bg-[#C9A96E]/[0.02] rounded-full blur-[120px]" />
-        <div className="absolute bottom-[-10%] right-[15%] w-[500px] h-[500px] bg-[#7A8B6F]/[0.025] rounded-full blur-[120px]" />
+        <div className="absolute top-[-10%] left-[15%] w-[500px] h-[500px] bg-[#C9A96E]/[0.04] rounded-full blur-[120px]" />
+        <div className="absolute bottom-[-10%] right-[15%] w-[500px] h-[500px] bg-[#7A8B6F]/[0.05] rounded-full blur-[120px]" />
+        <div className="absolute top-[40%] right-[5%] w-[400px] h-[400px] bg-[#8B7D6B]/[0.03] rounded-full blur-[100px] drift-slow" />
+        <div className="absolute bottom-[20%] left-[5%] w-[350px] h-[350px] bg-[#C9A96E]/[0.025] rounded-full blur-[100px] drift" />
       </div>
 
       <AmbientCanvas />
 
       {/* Main content — offset for desktop sidebar */}
-      <div className="relative lg:ml-[72px]" style={{ zIndex: 2 }}>
+      <div className="relative lg:ml-[78px]" style={{ zIndex: 2 }}>
         <AnimatePresence mode="wait">
           <motion.div
             key={activeScreen}

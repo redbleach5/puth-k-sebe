@@ -5,7 +5,7 @@
 // without distracting from content.
 
 /** Soft flowing wave — placed at bottom of screens */
-export function WaveBottom({ color = "#C9A96E", opacity = 0.06 }: { color?: string; opacity?: number }) {
+export function WaveBottom({ color = "#C9A96E", opacity = 0.12 }: { color?: string; opacity?: number }) {
   return (
     <svg
       className="absolute bottom-0 left-0 right-0 w-full pointer-events-none"
@@ -22,7 +22,7 @@ export function WaveBottom({ color = "#C9A96E", opacity = 0.06 }: { color?: stri
 }
 
 /** Soft flowing wave — placed at top of screens */
-export function WaveTop({ color = "#7A8B6F", opacity = 0.05 }: { color?: string; opacity?: number }) {
+export function WaveTop({ color = "#7A8B6F", opacity = 0.10 }: { color?: string; opacity?: number }) {
   return (
     <svg
       className="absolute top-0 left-0 right-0 w-full pointer-events-none"
@@ -42,7 +42,7 @@ export function WaveTop({ color = "#7A8B6F", opacity = 0.05 }: { color?: string;
 export function MandalaRing({
   size = 200,
   color = "#C9A96E",
-  opacity = 0.07,
+  opacity = 0.12,
   className = "",
 }: {
   size?: number;
@@ -92,7 +92,7 @@ export function MandalaRing({
 /** Flowing curves — organic background element */
 export function FlowingCurves({
   color = "#C9A96E",
-  opacity = 0.04,
+  opacity = 0.08,
   className = "",
 }: {
   color?: string;
@@ -132,7 +132,7 @@ export function FlowingCurves({
 export function LotusSVG({
   size = 120,
   color = "#C9A96E",
-  opacity = 0.12,
+  opacity = 0.18,
   className = "",
 }: {
   size?: number;
@@ -185,7 +185,7 @@ export function LotusSVG({
 /** Leaf/branch accent — nature motif */
 export function LeafAccent({
   color = "#7A8B6F",
-  opacity = 0.08,
+  opacity = 0.14,
   className = "",
 }: {
   color?: string;
@@ -213,7 +213,7 @@ export function LeafAccent({
 export function Ripples({
   size = 80,
   color = "#C9A96E",
-  opacity = 0.08,
+  opacity = 0.14,
   className = "",
 }: {
   size?: number;
@@ -250,7 +250,7 @@ export function SvgDivider({ color = "#C9A96E", opacity = 0.15 }: { color?: stri
 export function MoonPhases({
   size = 60,
   color = "#C9A96E",
-  opacity = 0.06,
+  opacity = 0.12,
   className = "",
 }: {
   size?: number;
@@ -271,6 +271,194 @@ export function MoonPhases({
       <circle cx="25" cy="30" r="10" fill="none" stroke={color} strokeWidth="0.5" />
       <circle cx="40" cy="30" r="8" fill="none" stroke={color} strokeWidth="0.8" />
       <path d="M40,22 A8,8 0 0,1 40,38" fill={color} opacity="0.2" />
+    </svg>
+  );
+}
+
+/** Zen garden sand lines — relaxing horizontal pattern */
+export function ZenLines({
+  color = "#C9A96E",
+  opacity = 0.06,
+  className = "",
+}: {
+  color?: string;
+  opacity?: number;
+  className?: string;
+}) {
+  return (
+    <svg
+      className={`pointer-events-none ${className}`}
+      viewBox="0 0 200 400"
+      preserveAspectRatio="none"
+      style={{ opacity }}
+    >
+      {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((i) => (
+        <path
+          key={i}
+          d={`M0,${30 + i * 32} C50,${26 + i * 32} 80,${34 + i * 32} 120,${30 + i * 32} C160,${26 + i * 32} 180,${34 + i * 32} 200,${30 + i * 32}`}
+          fill="none"
+          stroke={color}
+          strokeWidth="0.5"
+          opacity={0.4 + (i % 3) * 0.15}
+        />
+      ))}
+    </svg>
+  );
+}
+
+/** Concentric circles pattern — expands like ripples in water */
+export function WaterRipples({
+  size = 300,
+  color = "#7A8B6F",
+  opacity = 0.06,
+  className = "",
+}: {
+  size?: number;
+  color?: string;
+  opacity?: number;
+  className?: string;
+}) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 300 300"
+      className={`pointer-events-none ${className}`}
+      style={{ opacity }}
+    >
+      {[40, 65, 90, 115, 140].map((r, i) => (
+        <circle
+          key={i}
+          cx="150"
+          cy="150"
+          r={r}
+          fill="none"
+          stroke={color}
+          strokeWidth={0.8 - i * 0.1}
+          strokeDasharray={i % 2 === 0 ? "4 8" : "none"}
+        />
+      ))}
+      <circle cx="150" cy="150" r="8" fill={color} opacity="0.15" />
+    </svg>
+  );
+}
+
+/** Abstract landscape silhouette — mountains/hills for horizon feel */
+export function MountainSilhouette({
+  color = "#8B7D6B",
+  opacity = 0.05,
+  className = "",
+}: {
+  color?: string;
+  opacity?: number;
+  className?: string;
+}) {
+  return (
+    <svg
+      className={`pointer-events-none ${className}`}
+      viewBox="0 0 1200 200"
+      preserveAspectRatio="none"
+      style={{ opacity }}
+    >
+      <path
+        d="M0,200 L0,120 C100,80 200,100 300,70 C400,40 450,60 550,50 C650,40 700,70 800,55 C900,40 1000,80 1100,65 C1150,58 1180,70 1200,60 L1200,200 Z"
+        fill={color}
+      />
+      <path
+        d="M0,200 L0,140 C150,110 250,130 400,100 C550,70 600,90 750,80 C900,70 1000,100 1200,90 L1200,200 Z"
+        fill={color}
+        opacity="0.5"
+      />
+    </svg>
+  );
+}
+
+/** Sacred geometry — overlapping circles forming flower of life pattern */
+export function SacredGeometry({
+  size = 250,
+  color = "#C9A96E",
+  opacity = 0.05,
+  className = "",
+}: {
+  size?: number;
+  color?: string;
+  opacity?: number;
+  className?: string;
+}) {
+  const cx = 125;
+  const cy = 125;
+  const r = 40;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 250 250"
+      className={`pointer-events-none ${className}`}
+      style={{ opacity }}
+    >
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke={color} strokeWidth="0.5" />
+      {[0, 60, 120, 180, 240, 300].map((angle, i) => {
+        const rad = (angle * Math.PI) / 180;
+        const nx = cx + r * Math.cos(rad);
+        const ny = cy + r * Math.sin(rad);
+        return (
+          <circle key={i} cx={nx} cy={ny} r={r} fill="none" stroke={color} strokeWidth="0.4" />
+        );
+      })}
+      <circle cx={cx} cy={cy} r={r * 2} fill="none" stroke={color} strokeWidth="0.3" />
+    </svg>
+  );
+}
+
+/** Dot grid — subtle pointillism background */
+export function DotGrid({
+  color = "#C9A96E",
+  opacity = 0.08,
+  className = "",
+}: {
+  color?: string;
+  opacity?: number;
+  className?: string;
+}) {
+  const dots: { x: number; y: number; r: number }[] = [];
+  for (let row = 0; row < 12; row++) {
+    for (let col = 0; col < 8; col++) {
+      dots.push({ x: 25 + col * 50, y: 25 + row * 50, r: 0.8 + Math.random() * 0.8 });
+    }
+  }
+  return (
+    <svg
+      className={`pointer-events-none ${className}`}
+      viewBox="0 0 400 600"
+      style={{ opacity }}
+    >
+      {dots.map((d, i) => (
+        <circle key={i} cx={d.x} cy={d.y} r={d.r} fill={color} />
+      ))}
+    </svg>
+  );
+}
+
+/** Organic blob — soft amoeba-like shape for atmosphere */
+export function OrganicBlob({
+  color = "#7A8B6F",
+  opacity = 0.04,
+  className = "",
+}: {
+  color?: string;
+  opacity?: number;
+  className?: string;
+}) {
+  return (
+    <svg
+      className={`pointer-events-none ${className}`}
+      viewBox="0 0 400 400"
+      style={{ opacity }}
+    >
+      <path
+        d="M200,50 C280,30 350,100 360,180 C370,260 330,340 260,360 C190,380 100,350 60,280 C20,210 40,120 100,70 C140,40 170,55 200,50 Z"
+        fill={color}
+      />
     </svg>
   );
 }

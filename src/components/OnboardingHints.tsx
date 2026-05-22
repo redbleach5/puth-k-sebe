@@ -69,13 +69,13 @@ export default function OnboardingHints() {
         >
           {/* Backdrop */}
           <div
-            className="absolute inset-0 bg-[#2C2C2C]/20 backdrop-blur-sm"
+            className="absolute inset-0 bg-[#2C2C2C]/25 backdrop-blur-sm"
             onClick={handleDismiss}
           />
 
           {/* Card */}
           <motion.div
-            className="relative max-w-md w-full rounded-2xl bg-white/90 backdrop-blur-xl border border-[#C9A96E]/15 p-6 lg:p-8 shadow-lg shadow-[#C9A96E]/[0.03]"
+            className="relative max-w-md w-full rounded-2xl bg-white/92 backdrop-blur-xl border border-[#C9A96E]/18 p-7 lg:p-8 shadow-lg shadow-[#C9A96E]/[0.05]"
             initial={{ opacity: 0, y: 30, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.97 }}
@@ -88,33 +88,33 @@ export default function OnboardingHints() {
                   key={i}
                   className={`h-1 rounded-full transition-all duration-500 ${
                     i === currentHint
-                      ? "w-6 bg-[#C9A96E]/50"
+                      ? "w-7 bg-[#C9A96E]/60"
                       : i < currentHint
-                      ? "w-1.5 bg-[#C9A96E]/30"
-                      : "w-1.5 bg-[#E0D8CC]/40"
+                      ? "w-2 bg-[#C9A96E]/35"
+                      : "w-2 bg-[#E0D8CC]/45"
                   }`}
                 />
               ))}
             </div>
 
-            <h3 className="text-lg font-light text-foreground/80 mb-2">
+            <h3 className="text-lg font-normal text-foreground/90 mb-2.5">
               {hint.title}
             </h3>
-            <p className="body-text mb-6">
+            <p className="body-text mb-7">
               {hint.text}
             </p>
 
             <div className="flex items-center justify-between">
               <button
                 onClick={handleDismiss}
-                className="text-xs text-muted-foreground/45 font-light hover:text-muted-foreground/65 transition-colors duration-300 cursor-pointer"
+                className="text-sm text-foreground/55 font-normal hover:text-foreground/78 transition-colors duration-300 cursor-pointer"
               >
                 Пропустить
               </button>
 
               <button
                 onClick={handleNext}
-                className="px-5 py-2 text-sm font-light tracking-wide text-foreground/65 border border-[#C9A96E]/25 rounded-full hover:border-[#C9A96E]/45 hover:text-foreground/80 transition-all duration-300 cursor-pointer"
+                className="px-6 py-2.5 text-sm font-normal tracking-wide text-foreground/80 border border-[#C9A96E]/30 rounded-full hover:border-[#C9A96E]/50 hover:text-foreground/95 transition-all duration-300 cursor-pointer"
               >
                 {currentHint < hints.length - 1 ? "Далее" : "Начать"}
               </button>

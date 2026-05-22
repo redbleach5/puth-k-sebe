@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { tests, type TestData, type ResultType } from "@/lib/data";
 import { useStore } from "@/store/useStore";
-import { MandalaRing, WaveBottom } from "@/components/SvgDecor";
+import { MandalaRing, WaveBottom, SacredGeometry, FlowingCurves, OrganicBlob } from "@/components/SvgDecor";
 
 type TestPhase = "select" | "quiz" | "transition" | "result";
 
@@ -13,32 +13,34 @@ function ResultView({ result, onBack }: { result: ResultType; onBack: () => void
   useEffect(() => { const t = setTimeout(() => setShowBut(true), 4500); return () => clearTimeout(t); }, []);
 
   return (
-    <motion.div className="relative flex flex-col items-center px-4 sm:px-6 pt-8 lg:pt-14 pb-20 lg:pb-8 min-h-screen" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 2 }}>
+    <motion.div className="relative flex flex-col items-center px-4 sm:px-6 pt-8 lg:pt-14 pb-24 lg:pb-8 min-h-screen" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 2 }}>
       <WaveBottom color={result.color} />
-      <MandalaRing size={300} color={result.color} className="absolute -right-24 top-0 slow-spin hidden lg:block" />
+      <MandalaRing size={320} color={result.color} className="absolute -right-28 top-0 slow-spin hidden lg:block" />
+      <SacredGeometry size={260} color={result.color} className="absolute -left-20 top-20 drift-slow hidden lg:block" />
+      <OrganicBlob color={result.color} className="absolute left-[-8%] top-[30%] w-64 h-64 drift hidden lg:block" />
 
       <div className="relative w-full max-w-xl z-10">
-        <motion.div className="text-5xl sm:text-6xl mb-4 gentle-pulse text-center" style={{ color: result.color }} initial={{ opacity: 0, scale: 0.3 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3, duration: 1.2, type: "spring" }}>
+        <motion.div className="text-5xl sm:text-6xl mb-5 gentle-pulse text-center" style={{ color: result.color }} initial={{ opacity: 0, scale: 0.3 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3, duration: 1.2, type: "spring" }}>
           {result.symbol}
         </motion.div>
 
-        <motion.h1 className="text-2xl sm:text-3xl font-light text-foreground/90 text-center mb-1.5" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6, duration: 1 }}>
+        <motion.h1 className="text-2xl sm:text-3xl font-light text-foreground text-center mb-2" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6, duration: 1 }}>
           {result.title}
         </motion.h1>
 
-        <motion.p className="text-[15px] text-foreground/65 font-light text-center mb-5 max-w-md mx-auto" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1, duration: 1 }}>
+        <motion.p className="text-[16px] text-foreground/80 font-normal text-center mb-6 max-w-md mx-auto" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1, duration: 1 }}>
           {result.subtitle}
         </motion.p>
 
-        <motion.div className="max-w-lg mx-auto text-center mb-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.5, duration: 1 }}>
+        <motion.div className="max-w-lg mx-auto text-center mb-7" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.5, duration: 1 }}>
           <p className="body-text">{result.description}</p>
         </motion.div>
 
-        <motion.div className="flex flex-col gap-2.5 mb-6 max-w-md mx-auto" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 2.2, duration: 1 }}>
+        <motion.div className="flex flex-col gap-3 mb-7 max-w-md mx-auto" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 2.2, duration: 1 }}>
           {result.affirmations.map((a, i) => (
-            <motion.div key={i} className="flex items-start gap-2.5 text-left" initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 2.5 + i * 0.3, duration: 0.7 }}>
-              <span className="text-[11px] mt-[5px] opacity-50" style={{ color: result.color }}>{result.symbol}</span>
-              <span className="text-[13px] text-foreground/60 font-light">{a}</span>
+            <motion.div key={i} className="flex items-start gap-3 text-left" initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 2.5 + i * 0.3, duration: 0.7 }}>
+              <span className="text-[12px] mt-[5px] opacity-65" style={{ color: result.color }}>{result.symbol}</span>
+              <span className="text-[14px] text-foreground/78 font-normal">{a}</span>
             </motion.div>
           ))}
         </motion.div>
@@ -46,12 +48,12 @@ function ResultView({ result, onBack }: { result: ResultType; onBack: () => void
         {showBut && (
           <motion.div className="max-w-lg mx-auto text-center mb-10" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 2.5 }}>
             <div className="premium-divider mb-4" />
-            <p className="text-[13px] text-foreground/50 font-light leading-[1.9] italic">{result.but}</p>
+            <p className="text-[14px] text-foreground/65 font-normal leading-[1.9] italic">{result.but}</p>
           </motion.div>
         )}
 
         <div className="text-center">
-          <button onClick={onBack} className="text-[12px] tracking-[0.1em] text-foreground/50 font-light hover:text-foreground/70 transition-colors duration-300 cursor-pointer">
+          <button onClick={onBack} className="text-[13px] tracking-[0.1em] text-foreground/70 font-normal hover:text-foreground/90 transition-colors duration-300 cursor-pointer">
             Ко всем тестам
           </button>
         </div>
@@ -99,28 +101,30 @@ export default function TestScreen() {
 
   if (phase === "select") {
     return (
-      <div className="relative flex flex-col items-center px-4 sm:px-6 lg:px-10 pt-5 lg:pt-8 pb-20 lg:pb-8 min-h-screen">
+      <div className="relative flex flex-col items-center px-4 sm:px-6 lg:px-10 pt-5 lg:pt-8 pb-24 lg:pb-8 min-h-screen">
         <WaveBottom />
+        <FlowingCurves className="absolute left-0 top-0 h-full w-32 lg:w-44" color="#7A8B6F" />
+        <MandalaRing size={240} className="absolute -right-16 top-16 slow-spin hidden sm:block" />
         <div className="relative w-full max-w-3xl z-10">
-          <h2 className="text-xl sm:text-2xl font-light text-foreground/90 mb-0.5">Тесты</h2>
-          <p className="text-[13px] text-foreground/60 font-light mb-4">Узнайте себя глубже</p>
+          <h2 className="text-2xl sm:text-3xl font-light text-foreground mb-1">Тесты</h2>
+          <p className="text-[15px] text-foreground/80 font-normal mb-5">Узнайте себя глубже</p>
 
-          <div className="flex flex-col gap-2.5">
+          <div className="flex flex-col gap-3">
             {tests.map((test) => {
               const isCompleted = completedTests.includes(test.id);
               return (
                 <motion.button key={test.id} onClick={() => startTest(test)}
-                  className="group flex items-start gap-3 p-4 rounded-xl border border-[#C9A96E]/10 hover:border-[#C9A96E]/22 hover:bg-[#C9A96E]/[0.03] transition-all duration-300 text-left cursor-pointer"
+                  className="group flex items-start gap-4 p-5 rounded-xl premium-card hover:border-[#C9A96E]/25 transition-all duration-300 text-left cursor-pointer"
                   whileTap={{ scale: 0.98 }}
                 >
-                  <span className="text-xl opacity-50 group-hover:opacity-70 transition-opacity duration-300 mt-0.5">{test.symbol}</span>
+                  <span className="text-2xl opacity-60 group-hover:opacity-80 transition-opacity duration-300 mt-0.5">{test.symbol}</span>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <h3 className="text-[14px] font-light text-foreground/78">{test.title}</h3>
-                      {isCompleted && <span className="text-[10px] text-[#7A8B6F]/60 font-light">пройден</span>}
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="text-[15px] font-medium text-foreground/88">{test.title}</h3>
+                      {isCompleted && <span className="text-[11px] text-[#7A8B6F] font-normal">пройден</span>}
                     </div>
-                    <p className="text-[13px] text-foreground/60 font-light mb-0.5">{test.subtitle}</p>
-                    <p className="text-[12px] text-foreground/50 font-light leading-relaxed">{test.description}</p>
+                    <p className="text-[14px] text-foreground/78 font-normal mb-0.5">{test.subtitle}</p>
+                    <p className="text-[13px] text-foreground/68 font-normal leading-relaxed">{test.description}</p>
                   </div>
                 </motion.button>
               );
@@ -128,7 +132,7 @@ export default function TestScreen() {
           </div>
 
           {completedTests.length > 0 && (
-            <p className="text-[12px] text-foreground/50 font-light mt-4">Пройдено {completedTests.length} из {tests.length}</p>
+            <p className="text-[13px] text-foreground/70 font-normal mt-5">Пройдено {completedTests.length} из {tests.length}</p>
           )}
         </div>
       </div>
@@ -140,36 +144,36 @@ export default function TestScreen() {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen px-4 sm:px-6 relative">
         <div className="absolute top-4 sm:top-5 left-4 sm:left-6 right-4 sm:right-6 flex items-center justify-between max-w-xl mx-auto">
-          <button onClick={handleBack} className="text-[12px] text-foreground/55 font-light hover:text-foreground/75 transition-colors duration-300 cursor-pointer">← Назад</button>
-          <div className="flex gap-1.5">
+          <button onClick={handleBack} className="text-[13px] text-foreground/75 font-normal hover:text-foreground/95 transition-colors duration-300 cursor-pointer">← Назад</button>
+          <div className="flex gap-2">
             {activeTest.questions.map((_, i) => (
-              <div key={i} className={`w-1.5 h-1.5 rounded-full transition-all duration-500 ${i < questionIndex ? "bg-[#C9A96E]/55" : i === questionIndex ? "bg-[#C9A96E] scale-125" : "bg-[#C9A96E]/20"}`} />
+              <div key={i} className={`w-2 h-2 rounded-full transition-all duration-500 ${i < questionIndex ? "bg-[#C9A96E]/70" : i === questionIndex ? "bg-[#C9A96E] scale-125" : "bg-[#C9A96E]/25"}`} />
             ))}
           </div>
         </div>
 
-        <div className="text-[11px] tracking-[0.18em] text-foreground/50 mb-5 font-light uppercase">
+        <div className="text-[12px] tracking-[0.18em] text-foreground/70 mb-5 font-normal uppercase">
           вопрос {questionIndex + 1} из {activeTest.questions.length}
         </div>
 
         <AnimatePresence mode="wait">
           <motion.div key={questionIndex} className="flex flex-col items-center max-w-xl w-full" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.5 }}>
-            <h2 className="text-xl sm:text-2xl lg:text-3xl font-light text-foreground/90 text-center mb-1.5 leading-snug">{q.text}</h2>
-            <p className="text-[13px] text-foreground/60 font-light text-center mb-8">{q.subtext}</p>
+            <h2 className="text-xl sm:text-2xl lg:text-3xl font-light text-foreground text-center mb-2 leading-snug">{q.text}</h2>
+            <p className="text-[14px] text-foreground/78 font-normal text-center mb-8">{q.subtext}</p>
 
-            <div className="grid grid-cols-2 gap-2.5 sm:gap-3 w-full max-w-sm">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 w-full max-w-sm">
               {q.options.map((opt, i) => (
                 <motion.button key={i} onClick={() => handleAnswer(opt.value)}
-                  className={`group flex flex-col items-center gap-2 py-4 px-3 rounded-xl border transition-all duration-300 cursor-pointer ${
-                    selected === opt.value ? "border-[#C9A96E]/50 bg-[#C9A96E]/[0.07] scale-[0.97]"
-                    : selected !== null ? "border-transparent opacity-20 scale-[0.96]"
-                    : "border-[#C9A96E]/12 hover:border-[#C9A96E]/28 hover:bg-[#C9A96E]/[0.03]"
+                  className={`group flex flex-col items-center gap-2.5 py-5 px-4 rounded-xl border transition-all duration-300 cursor-pointer ${
+                    selected === opt.value ? "border-[#C9A96E]/60 bg-[#C9A96E]/[0.08] scale-[0.97]"
+                    : selected !== null ? "border-transparent opacity-25 scale-[0.96]"
+                    : "border-[#C9A96E]/18 hover:border-[#C9A96E]/35 hover:bg-[#C9A96E]/[0.04]"
                   }`}
                   initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 + i * 0.05, duration: 0.35 }}
                   disabled={selected !== null}
                 >
-                  <span className={`text-base transition-all duration-300 ${selected === opt.value ? "opacity-100 scale-110" : "opacity-50"}`}>{opt.symbol}</span>
-                  <span className={`text-[13px] font-light transition-colors duration-300 ${selected === opt.value ? "text-foreground/80" : "text-foreground/62"}`}>{opt.label}</span>
+                  <span className={`text-lg transition-all duration-300 ${selected === opt.value ? "opacity-100 scale-110" : "opacity-60"}`}>{opt.symbol}</span>
+                  <span className={`text-[14px] font-normal transition-colors duration-300 ${selected === opt.value ? "text-foreground/90" : "text-foreground/78"}`}>{opt.label}</span>
                 </motion.button>
               ))}
             </div>
@@ -182,8 +186,8 @@ export default function TestScreen() {
   if (phase === "transition") {
     return (
       <motion.div className="flex flex-col items-center justify-center min-h-screen px-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 2 }}>
-        <motion.div className="w-3 h-3 rounded-full bg-[#C9A96E]/20 mb-6" initial={{ scale: 0, opacity: 0 }} animate={{ scale: [0, 12, 18], opacity: [0, 0.12, 0] }} transition={{ delay: 0.3, duration: 3, ease: "easeOut" }} />
-        <p className="text-2xl font-light text-foreground/60">Выдохните...</p>
+        <motion.div className="w-3 h-3 rounded-full bg-[#C9A96E]/25 mb-6" initial={{ scale: 0, opacity: 0 }} animate={{ scale: [0, 12, 18], opacity: [0, 0.15, 0] }} transition={{ delay: 0.3, duration: 3, ease: "easeOut" }} />
+        <p className="text-2xl font-light text-foreground/80">Выдохните...</p>
       </motion.div>
     );
   }
