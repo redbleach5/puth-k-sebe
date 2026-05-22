@@ -149,6 +149,15 @@ export const useStore = create<AppState & AppActions>()(
             lastVisit: today,
           });
         }
+
+        const stats = {
+          streak: get().streak.count,
+          totalBreathing: get().breathingSessions.length,
+          testsCompleted: get().completedTests.length,
+          cardsDrawn: get().drawnCards.length,
+          journalEntries: get().journalEntries.length,
+        };
+        get().checkAchievements(stats);
       },
 
       completeTest: (testId: string) => {
@@ -156,6 +165,15 @@ export const useStore = create<AppState & AppActions>()(
         if (completedTests.includes(testId)) return;
         set({ completedTests: [...completedTests, testId] });
         get().addXP(25);
+
+        const stats = {
+          streak: get().streak.count,
+          totalBreathing: get().breathingSessions.length,
+          testsCompleted: get().completedTests.length,
+          cardsDrawn: get().drawnCards.length,
+          journalEntries: get().journalEntries.length,
+        };
+        get().checkAchievements(stats);
       },
 
       drawCard: (cardId: string): boolean => {
@@ -179,6 +197,15 @@ export const useStore = create<AppState & AppActions>()(
           get().addXP(10);
         }
 
+        const stats = {
+          streak: get().streak.count,
+          totalBreathing: get().breathingSessions.length,
+          testsCompleted: get().completedTests.length,
+          cardsDrawn: get().drawnCards.length,
+          journalEntries: get().journalEntries.length,
+        };
+        get().checkAchievements(stats);
+
         return true;
       },
 
@@ -201,6 +228,15 @@ export const useStore = create<AppState & AppActions>()(
           journalEntries: [entry, ...state.journalEntries],
         }));
         get().addXP(20);
+
+        const stats = {
+          streak: get().streak.count,
+          totalBreathing: get().breathingSessions.length,
+          testsCompleted: get().completedTests.length,
+          cardsDrawn: get().drawnCards.length,
+          journalEntries: get().journalEntries.length,
+        };
+        get().checkAchievements(stats);
       },
 
       recordBreathing: (duration: number, type: string) => {
@@ -213,6 +249,15 @@ export const useStore = create<AppState & AppActions>()(
           breathingSessions: [session, ...state.breathingSessions],
         }));
         get().addXP(15);
+
+        const stats = {
+          streak: get().streak.count,
+          totalBreathing: get().breathingSessions.length,
+          testsCompleted: get().completedTests.length,
+          cardsDrawn: get().drawnCards.length,
+          journalEntries: get().journalEntries.length,
+        };
+        get().checkAchievements(stats);
       },
 
       getTodayAffirmation: (totalAffirmations: number): number => {

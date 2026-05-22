@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { useStore } from "@/store/useStore";
-import { affirmations } from "@/lib/data";
+import { affirmations, tests, dailyThoughts } from "@/lib/data";
 import { WaveBottom, MandalaRing, FlowingCurves, LeafAccent, SacredGeometry, OrganicBlob, MountainSilhouette, ZenLines } from "@/components/SvgDecor";
 
 export default function HomeScreen({
@@ -14,6 +14,16 @@ export default function HomeScreen({
   const level = getLevel();
   const affIndex = getTodayAffirmation(affirmations.length);
   const todayAffirmation = affirmations[affIndex];
+
+  const todayThoughtIndex = (() => {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), 0, 0);
+    const diff = now.getTime() - start.getTime();
+    const oneDay = 1000 * 60 * 60 * 24;
+    const dayOfYear = Math.floor(diff / oneDay);
+    return dayOfYear % dailyThoughts.length;
+  })();
+  const todayThought = dailyThoughts[todayThoughtIndex];
 
   const today = new Date().toISOString().split("T")[0];
   const hasActivity = breathingSessions.some((s) => s.date.startsWith(today)) || journalEntries.some((j) => j.date.startsWith(today));
@@ -133,14 +143,14 @@ export default function HomeScreen({
         >
           <p className="text-[12px] font-medium text-foreground/65 tracking-wider uppercase mb-2">Мысль дня</p>
           <p className="text-[15px] text-foreground/82 font-normal leading-relaxed">
-            Тишина — не отсутствие звука. Это пространство, где рождается понимание. Позвольте себе слышать.
+            {todayThought}
           </p>
         </motion.div>
 
         {/* Stats Grid — bigger, more readable */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
           <StatCard label="Дыхание" value={`${breathingSessions.length} сессий`} symbol="◌" />
-          <StatCard label="Тесты" value={`${completedTests.length} / 3`} symbol="◈" />
+          <StatCard label="Тесты" value={`${completedTests.length} / ${tests.length}`} symbol="◈" />
           <StatCard label="Карты" value={`${drawnCards.length} собрано`} symbol="✦" />
           <StatCard label="Дневник" value={`${journalEntries.length} записей`} symbol="✎" />
         </div>

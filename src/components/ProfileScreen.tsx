@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { achievements, levels } from "@/lib/data";
+import { achievements, levels, tests, oracleCards } from "@/lib/data";
 import { useStore } from "@/store/useStore";
 import { MandalaRing, WaveBottom, SacredGeometry, DotGrid } from "@/components/SvgDecor";
 
@@ -50,8 +50,8 @@ export default function ProfileScreen() {
         <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 mb-6">
           <StatBlock label="Streak" value={`${streak.count}`} symbol="◎" />
           <StatBlock label="Дыхание" value={`${breathingSessions.length}`} symbol="◌" />
-          <StatBlock label="Тесты" value={`${completedTests.length}/3`} symbol="◈" />
-          <StatBlock label="Карты" value={`${drawnCards.length}/32`} symbol="✦" />
+          <StatBlock label="Тесты" value={`${completedTests.length}/${tests.length}`} symbol="◈" />
+          <StatBlock label="Карты" value={`${drawnCards.length}/${oracleCards.length}`} symbol="✦" />
           <StatBlock label="Дневник" value={`${journalEntries.length}`} symbol="✎" />
           <StatBlock label="Достижения" value={`${unlockedAchievements.length}/${achievements.length}`} symbol="★" />
         </div>
