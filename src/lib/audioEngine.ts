@@ -1,54 +1,94 @@
-// ─── Meditation Audio Engine ─────────────────────────────────────────────────
-// All sounds are synthesized in real-time using Web Audio API.
-// No audio files needed — everything is generated from oscillators, noise, and filters.
-// This ensures zero copyright issues and minimal bundle size.
+// ─── Meditation Audio Engine v2 ──────────────────────────────────────────────
+// Beautiful, spacious, musical soundscapes.
+// Pentatonic scales, convolution reverb, soft pads, singing bowls, gentle rain.
 
 export type SoundscapeId = "home" | "breathe" | "wisdom" | "journal" | "test" | "profile" | "silence";
 
-interface ActiveNodes {
-  oscillators: OscillatorNode[];
-  gains: GainNode[];
-  noiseSource: AudioBufferSourceNode | null;
-  lfo: OscillatorNode | null;
-  masterGain: GainNode;
+// ─── Musical scales (pentatonic — never dissonant) ───────────────────────────
+
+const PENTATONIC_C = [261.63, 293.66, 329.63, 392.0, 440.0, 523.25, 587.33, 659.25];
+const PENTATONIC_LOW = [130.81, 146.83, 164.81, 196.0, 220.0, 261.63];
+const PENTATONIC_HIGH = [523.25, 587.33, 659.25, 783.99, 880.0];
+
+// ─── Utility: pick random from array ────────────────────────────────────────
+
+function pick<T>(arr: T[]): T { return arr[Math.floor(Math.random() * arr.length)]; }
+
+// ─── Utility: generate impulse response for convolution reverb ───────────────
+
+function generateReverbIR(ctx: BaseAudioContext, duration: number, decay: number): AudioBuffer {
+  const length = ctx.sampleRate * duration;
+  const buffer = ctx.createBuffer(2, length, ctx.sampleRate);
+
+  for (let ch = 0; ch < 2; ch++) {
+    const data = buffer.getChannelData(ch);
+    for (let i = 0; i < length; i++) {
+      // Exponential decay with some early reflections
+      const t = i / ctx.sampleRate;
+      const earlyRef = t < 0.03 ? 1.5 : 1;
+      data[i] = (Math.random() * 2 - 1) * Math.pow(1 - t / duration, decay) * earlyRef;
+    }
+  }
+  return buffer;
 }
+
+// ─── Main Engine ─────────────────────────────────────────────────────────────
 
 class MeditationAudioEngine {
   private ctx: AudioContext | null = null;
   private masterGain: GainNode | null = null;
+  private reverb: ConvolverNode | null = null;
+  private reverbGain: GainNode | null = null;
+  private dryGain: GainNode | null = null;
+  private analyser: AnalyserNode | null = null;
   private currentSoundscape: SoundscapeId = "silence";
-  private activeNodes: ActiveNodes | null = null;
-  private _volume = 0.35;
+  private activeNodes: { stoppable: (OscillatorNode | AudioBufferSourceNode)[]; disconnectable: AudioNode[] } | null = null;
+  private _volume = 0.4;
   private _enabled = false;
   private fadeTimeout: ReturnType<typeof setTimeout> | null = null;
-  private analyser: AnalyserNode | null = null;
+  private schedulers: ReturnType<typeof setInterval>[] = [];
 
   get enabled() { return this._enabled; }
   get volume() { return this._volume; }
   get analyserNode() { return this.analyser; }
 
+  // ─── Setup ────────────────────────────────────────────────────────────────
+
   private ensureContext(): AudioContext {
-    if (!this.ctx) {
-      this.ctx = new AudioContext();
-    }
-    if (this.ctx.state === "suspended") {
-      this.ctx.resume();
-    }
+    if (!this.ctx) this.ctx = new AudioContext();
+    if (this.ctx.state === "suspended") this.ctx.resume();
     return this.ctx;
   }
 
   enable() {
     this._enabled = true;
     const ctx = this.ensureContext();
+
     if (!this.masterGain) {
       this.masterGain = ctx.createGain();
       this.masterGain.gain.value = this._volume;
       this.masterGain.connect(ctx.destination);
     }
+
+    if (!this.reverb) {
+      this.reverb = ctx.createConvolver();
+      this.reverb.buffer = generateReverbIR(ctx, 3.5, 2.5);
+
+      this.reverbGain = ctx.createGain();
+      this.reverbGain.gain.value = 0.45; // Wet signal
+
+      this.dryGain = ctx.createGain();
+      this.dryGain.gain.value = 0.7; // Dry signal
+
+      this.reverb.connect(this.reverbGain);
+      this.reverbGain.connect(this.masterGain);
+      this.dryGain.connect(this.masterGain);
+    }
+
     if (!this.analyser) {
       this.analyser = ctx.createAnalyser();
       this.analyser.fftSize = 256;
-      this.analyser.smoothingTimeConstant = 0.85;
+      this.analyser.smoothingTimeConstant = 0.88;
       this.masterGain.connect(this.analyser);
     }
   }
@@ -61,7 +101,7 @@ class MeditationAudioEngine {
   setVolume(v: number) {
     this._volume = Math.max(0, Math.min(1, v));
     if (this.masterGain) {
-      this.masterGain.gain.setTargetAtTime(this._volume, this.ensureContext().currentTime, 0.1);
+      this.masterGain.gain.setTargetAtTime(this._volume, this.ensureContext().currentTime, 0.15);
     }
   }
 
@@ -72,387 +112,458 @@ class MeditationAudioEngine {
     this.crossfadeTo(id);
   }
 
-  // ─── Sound synthesis methods ──────────────────────────────────────────────
+  // ─── Routing helper ───────────────────────────────────────────────────────
+
+  private routeToOutput(node: AudioNode) {
+    if (!this.reverb || !this.dryGain) return;
+    node.connect(this.dryGain);
+    node.connect(this.reverb);
+  }
+
+  // ─── Fade management ──────────────────────────────────────────────────────
 
   private fadeOutAndStop() {
     if (this.activeNodes) {
-      const { masterGain, gains, oscillators, noiseSource, lfo } = this.activeNodes;
+      const { stoppable, disconnectable } = this.activeNodes;
       const ctx = this.ensureContext();
       const now = ctx.currentTime;
 
-      masterGain.gain.setTargetAtTime(0, now, 0.5);
+      // Fade out master briefly
+      if (this.masterGain) {
+        this.masterGain.gain.setTargetAtTime(0, now, 0.6);
+      }
 
       setTimeout(() => {
-        oscillators.forEach((o) => { try { o.stop(); } catch {} });
-        if (noiseSource) { try { noiseSource.stop(); } catch {} }
-        if (lfo) { try { lfo.stop(); } catch {} }
-        gains.forEach((g) => g.disconnect());
-        masterGain.disconnect();
+        stoppable.forEach((n) => { try { n.stop(); } catch {} });
+        disconnectable.forEach((n) => { try { n.disconnect(); } catch {} });
         this.activeNodes = null;
-      }, 1500);
+        // Restore master gain
+        if (this.masterGain) {
+          this.masterGain.gain.setTargetAtTime(this._volume, ctx.currentTime, 0.1);
+        }
+      }, 2000);
     }
+
+    // Clear schedulers
+    this.schedulers.forEach((id) => clearInterval(id));
+    this.schedulers = [];
   }
 
   private crossfadeTo(id: SoundscapeId) {
-    // Fade out current
     this.fadeOutAndStop();
-
-    // Fade in new after a brief pause
     this.fadeTimeout = setTimeout(() => {
       this.startSoundscape(id);
-    }, 600);
+    }, 800);
   }
 
   private startSoundscape(id: SoundscapeId) {
     const ctx = this.ensureContext();
-    const sceneGain = ctx.createGain();
-    sceneGain.gain.value = 0;
-    sceneGain.connect(this.masterGain!);
-
-    const nodes: ActiveNodes = {
-      oscillators: [],
-      gains: [],
-      noiseSource: null,
-      lfo: null,
-      masterGain: sceneGain,
-    };
+    const stoppable: (OscillatorNode | AudioBufferSourceNode)[] = [];
+    const disconnectable: AudioNode[] = [];
 
     switch (id) {
-      case "home":
-        this.createHomeSoundscape(ctx, sceneGain, nodes);
-        break;
-      case "breathe":
-        this.createBreatheSoundscape(ctx, sceneGain, nodes);
-        break;
-      case "wisdom":
-        this.createWisdomSoundscape(ctx, sceneGain, nodes);
-        break;
-      case "journal":
-        this.createJournalSoundscape(ctx, sceneGain, nodes);
-        break;
-      case "test":
-        this.createTestSoundscape(ctx, sceneGain, nodes);
-        break;
-      case "profile":
-        this.createProfileSoundscape(ctx, sceneGain, nodes);
-        break;
-      default:
-        break;
+      case "home": this.buildHome(ctx, stoppable, disconnectable); break;
+      case "breathe": this.buildBreathe(ctx, stoppable, disconnectable); break;
+      case "wisdom": this.buildWisdom(ctx, stoppable, disconnectable); break;
+      case "journal": this.buildJournal(ctx, stoppable, disconnectable); break;
+      case "test": this.buildTest(ctx, stoppable, disconnectable); break;
+      case "profile": this.buildProfile(ctx, stoppable, disconnectable); break;
     }
 
-    this.activeNodes = nodes;
-
-    // Fade in
-    sceneGain.gain.setTargetAtTime(1, ctx.currentTime, 0.8);
+    this.activeNodes = { stoppable, disconnectable };
   }
 
-  // ─── Home: Warm ambient drone with soft harmonics ─────────────────────────
+  // ─── Sound building blocks ────────────────────────────────────────────────
 
-  private createHomeSoundscape(ctx: AudioContext, gain: GainNode, nodes: ActiveNodes) {
-    // Base drone - warm low tone
-    const base = this.createOsc(ctx, gain, nodes, 110, "sine", 0.12);
-    // Fifth harmony
-    this.createOsc(ctx, gain, nodes, 165, "sine", 0.06);
-    // Octave shimmer
-    this.createOsc(ctx, gain, nodes, 220, "sine", 0.03);
-    // Slow beat frequency (binaural-like)
-    this.createOsc(ctx, gain, nodes, 111.5, "sine", 0.08);
-
-    // LFO for gentle volume swell
-    const lfo = ctx.createOscillator();
-    const lfoGain = ctx.createGain();
-    lfo.type = "sine";
-    lfo.frequency.value = 0.08; // Very slow
-    lfoGain.gain.value = 0.03;
-    lfo.connect(lfoGain);
-    lfoGain.connect(base.gain);
-    lfo.start();
-    nodes.lfo = lfo;
-
-    // Soft filtered noise (air/wind texture)
-    this.createFilteredNoise(ctx, gain, nodes, 800, 0.015);
-  }
-
-  // ─── Breathe: Rhythmic swell matching breathing patterns ──────────────────
-
-  private createBreatheSoundscape(ctx: AudioContext, gain: GainNode, nodes: ActiveNodes) {
-    // Ocean-like drone
-    const base = this.createOsc(ctx, gain, nodes, 82.5, "sine", 0.1);
-    this.createOsc(ctx, gain, nodes, 123.75, "sine", 0.05);
-    this.createOsc(ctx, gain, nodes, 55, "sine", 0.07);
-
-    // Breathing LFO - mimics inhale/exhale cycle (~6 seconds)
-    const lfo = ctx.createOscillator();
-    const lfoGain = ctx.createGain();
-    lfo.type = "sine";
-    lfo.frequency.value = 0.16; // ~6 second cycle
-    lfoGain.gain.value = 0.04;
-    lfo.connect(lfoGain);
-    lfoGain.connect(base.gain);
-    lfo.start();
-    nodes.lfo = lfo;
-
-    // Filtered noise for ocean texture
-    this.createFilteredNoise(ctx, gain, nodes, 400, 0.025);
-  }
-
-  // ─── Wisdom: Ethereal high tones, singing bowl-like ───────────────────────
-
-  private createWisdomSoundscape(ctx: AudioContext, gain: GainNode, nodes: ActiveNodes) {
-    // Singing bowl fundamentals
-    this.createOsc(ctx, gain, nodes, 528, "sine", 0.04); // "healing" frequency
-    this.createOsc(ctx, gain, nodes, 396, "sine", 0.03);
-    this.createOsc(ctx, gain, nodes, 660, "sine", 0.02);
-    // Subtle shimmer
-    this.createOsc(ctx, gain, nodes, 1056, "sine", 0.008);
-
-    // Very slow modulation
-    const lfo = ctx.createOscillator();
-    const lfoGain = ctx.createGain();
-    lfo.type = "sine";
-    lfo.frequency.value = 0.05;
-    lfoGain.gain.value = 0.015;
-    lfo.connect(lfoGain);
-    lfoGain.connect(gain.gain);
-    lfo.start();
-    nodes.lfo = lfo;
-
-    // Airy texture
-    this.createFilteredNoise(ctx, gain, nodes, 2000, 0.01);
-  }
-
-  // ─── Journal: Rain-like gentle texture ────────────────────────────────────
-
-  private createJournalSoundscape(ctx: AudioContext, gain: GainNode, nodes: ActiveNodes) {
-    // Soft warm base
-    this.createOsc(ctx, gain, nodes, 130.81, "sine", 0.06); // C3
-    this.createOsc(ctx, gain, nodes, 196, "sine", 0.03); // G3
-
-    // Rain noise - bandpass filtered
-    this.createFilteredNoise(ctx, gain, nodes, 3000, 0.03);
-    // Additional low rain rumble
-    this.createFilteredNoise(ctx, gain, nodes, 200, 0.015);
-  }
-
-  // ─── Test: Mystical, introspective ────────────────────────────────────────
-
-  private createTestSoundscape(ctx: AudioContext, gain: GainNode, nodes: ActiveNodes) {
-    // Deep introspective drone
-    this.createOsc(ctx, gain, nodes, 73.42, "sine", 0.09); // D2
-    this.createOsc(ctx, gain, nodes, 110, "sine", 0.05); // A2
-    // Mysterious interval
-    this.createOsc(ctx, gain, nodes, 146.83, "sine", 0.03); // D3
-    // Slightly detuned for mystery
-    this.createOsc(ctx, gain, nodes, 147.8, "sine", 0.02);
-
-    // Slow evolving modulation
-    const lfo = ctx.createOscillator();
-    const lfoGain = ctx.createGain();
-    lfo.type = "sine";
-    lfo.frequency.value = 0.04;
-    lfoGain.gain.value = 0.02;
-    lfo.connect(lfoGain);
-    lfoGain.connect(gain.gain);
-    lfo.start();
-    nodes.lfo = lfo;
-
-    // Subtle wind
-    this.createFilteredNoise(ctx, gain, nodes, 600, 0.012);
-  }
-
-  // ─── Profile: Warm, grounding, content ────────────────────────────────────
-
-  private createProfileSoundscape(ctx: AudioContext, gain: GainNode, nodes: ActiveNodes) {
-    // Grounding low tone
-    this.createOsc(ctx, gain, nodes, 98, "sine", 0.08); // G2
-    this.createOsc(ctx, gain, nodes, 146.83, "sine", 0.04); // D3
-    this.createOsc(ctx, gain, nodes, 196, "sine", 0.025); // G3
-
-    // Gentle warmth
-    const lfo = ctx.createOscillator();
-    const lfoGain = ctx.createGain();
-    lfo.type = "sine";
-    lfo.frequency.value = 0.06;
-    lfoGain.gain.value = 0.02;
-    lfo.connect(lfoGain);
-    lfoGain.connect(gain.gain);
-    lfo.start();
-    nodes.lfo = lfo;
-
-    this.createFilteredNoise(ctx, gain, nodes, 500, 0.01);
-  }
-
-  // ─── Utility: Create oscillator with gain ─────────────────────────────────
-
-  private createOsc(
+  /** Create a soft pad: layered detuned oscillators through a low-pass filter */
+  private createSoftPad(
     ctx: AudioContext,
-    destination: AudioNode,
-    nodes: ActiveNodes,
-    freq: number,
-    type: OscillatorType,
-    volume: number
-  ): { osc: OscillatorNode; gain: GainNode } {
-    const osc = ctx.createOscillator();
-    const gainNode = ctx.createGain();
-
-    osc.type = type;
-    osc.frequency.value = freq;
-    gainNode.gain.value = volume;
-
-    osc.connect(gainNode);
-    gainNode.connect(destination);
-    osc.start();
-
-    nodes.oscillators.push(osc);
-    nodes.gains.push(gainNode);
-
-    return { osc, gain: gainNode };
-  }
-
-  // ─── Utility: Create filtered white noise ─────────────────────────────────
-
-  private createFilteredNoise(
-    ctx: AudioContext,
-    destination: AudioNode,
-    nodes: ActiveNodes,
+    freqs: number[],
+    volume: number,
     filterFreq: number,
-    volume: number
-  ) {
-    const bufferSize = ctx.sampleRate * 4;
-    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-
-    // Generate pink-ish noise (more natural than white)
-    let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
-    for (let i = 0; i < bufferSize; i++) {
-      const white = Math.random() * 2 - 1;
-      b0 = 0.99886 * b0 + white * 0.0555179;
-      b1 = 0.99332 * b1 + white * 0.0750759;
-      b2 = 0.96900 * b2 + white * 0.1538520;
-      b3 = 0.86650 * b3 + white * 0.3104856;
-      b4 = 0.55000 * b4 + white * 0.5329522;
-      b5 = -0.7616 * b5 - white * 0.0168980;
-      data[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.11;
-      b6 = white * 0.115926;
-    }
-
-    const source = ctx.createBufferSource();
-    source.buffer = buffer;
-    source.loop = true;
+    stoppable: (OscillatorNode | AudioBufferSourceNode)[],
+    disconnectable: AudioNode[]
+  ): GainNode {
+    const padGain = ctx.createGain();
+    padGain.gain.value = 0;
+    // Slow fade in
+    padGain.gain.setTargetAtTime(volume, ctx.currentTime, 2);
 
     const filter = ctx.createBiquadFilter();
-    filter.type = "bandpass";
+    filter.type = "lowpass";
     filter.frequency.value = filterFreq;
-    filter.Q.value = 0.7;
+    filter.Q.value = 0.5;
+    disconnectable.push(filter);
 
-    const gainNode = ctx.createGain();
-    gainNode.gain.value = volume;
+    filter.connect(padGain);
+    this.routeToOutput(padGain);
+    disconnectable.push(padGain);
 
-    source.connect(filter);
-    filter.connect(gainNode);
-    gainNode.connect(destination);
-    source.start();
+    for (const freq of freqs) {
+      // Main tone
+      const osc = ctx.createOscillator();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      osc.connect(filter);
+      osc.start();
+      stoppable.push(osc);
 
-    nodes.noiseSource = source;
-    nodes.gains.push(gainNode);
+      // Slightly detuned copy for warmth (chorus)
+      const osc2 = ctx.createOscillator();
+      osc2.type = "sine";
+      osc2.frequency.value = freq * 1.002; // Slight detune
+      const g2 = ctx.createGain();
+      g2.gain.value = 0.5;
+      osc2.connect(g2);
+      g2.connect(filter);
+      osc2.start();
+      stoppable.push(osc2);
+      disconnectable.push(g2);
+
+      // Quiet harmonic an octave up
+      const osc3 = ctx.createOscillator();
+      osc3.type = "sine";
+      osc3.frequency.value = freq * 2;
+      const g3 = ctx.createGain();
+      g3.gain.value = 0.12;
+      osc3.connect(g3);
+      g3.connect(filter);
+      osc3.start();
+      stoppable.push(osc3);
+      disconnectable.push(g3);
+    }
+
+    // Slow filter sweep for movement
+    const lfo = ctx.createOscillator();
+    const lfoGain = ctx.createGain();
+    lfo.type = "sine";
+    lfo.frequency.value = 0.04 + Math.random() * 0.03;
+    lfoGain.gain.value = filterFreq * 0.15;
+    lfo.connect(lfoGain);
+    lfoGain.connect(filter.frequency);
+    lfo.start();
+    stoppable.push(lfo);
+    disconnectable.push(lfoGain);
+
+    return padGain;
   }
 
-  // ─── One-shot sounds for interactions ─────────────────────────────────────
+  /** Create gentle rain-like noise */
+  private createRain(
+    ctx: AudioContext,
+    volume: number,
+    filterFreq: number,
+    stoppable: (OscillatorNode | AudioBufferSourceNode)[],
+    disconnectable: AudioNode[]
+  ): GainNode {
+    const bufLen = ctx.sampleRate * 6;
+    const buf = ctx.createBuffer(2, bufLen, ctx.sampleRate);
 
-  playChime(frequency = 528, duration = 2.5) {
-    if (!this._enabled || !this.ctx || !this.masterGain) return;
+    // Generate pink noise per channel
+    for (let ch = 0; ch < 2; ch++) {
+      const data = buf.getChannelData(ch);
+      let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+      for (let i = 0; i < bufLen; i++) {
+        const white = Math.random() * 2 - 1;
+        b0 = 0.99886 * b0 + white * 0.0555179;
+        b1 = 0.99332 * b1 + white * 0.0750759;
+        b2 = 0.96900 * b2 + white * 0.1538520;
+        b3 = 0.86650 * b3 + white * 0.3104856;
+        b4 = 0.55000 * b4 + white * 0.5329522;
+        b5 = -0.7616 * b5 - white * 0.0168980;
+        data[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.08;
+        b6 = white * 0.115926;
+      }
+    }
+
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.loop = true;
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.value = filterFreq;
+    filter.Q.value = 0.3;
+
+    const gain = ctx.createGain();
+    gain.gain.value = 0;
+    gain.gain.setTargetAtTime(volume, ctx.currentTime, 2);
+
+    src.connect(filter);
+    filter.connect(gain);
+    this.routeToOutput(gain);
+    src.start();
+    stoppable.push(src);
+    disconnectable.push(filter, gain);
+
+    return gain;
+  }
+
+  /** Schedule occasional soft chime notes from a scale */
+  private scheduleChimes(
+    ctx: AudioContext,
+    scale: number[],
+    intervalMs: [number, number], // min, max random interval
+    volume: number,
+    stoppable: (OscillatorNode | AudioBufferSourceNode)[],
+    disconnectable: AudioNode[]
+  ) {
+    const playChime = () => {
+      if (!this._enabled) return;
+      const freq = pick(scale);
+      const now = ctx.currentTime;
+
+      // Bell-like tone with inharmonic partials
+      const partials = [
+        { ratio: 1, vol: volume },
+        { ratio: 2.756, vol: volume * 0.35 },
+        { ratio: 5.404, vol: volume * 0.12 },
+      ];
+
+      for (const p of partials) {
+        const osc = ctx.createOscillator();
+        osc.type = "sine";
+        osc.frequency.value = freq * p.ratio;
+
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(p.vol, now);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 5);
+
+        osc.connect(gain);
+        this.routeToOutput(gain);
+        osc.start(now);
+        osc.stop(now + 5.5);
+      }
+    };
+
+    const scheduleNext = () => {
+      const delay = intervalMs[0] + Math.random() * (intervalMs[1] - intervalMs[0]);
+      const id = setTimeout(() => {
+        playChime();
+        scheduleNext();
+      }, delay);
+      // Store as pseudo-interval for cleanup
+      this.schedulers.push(id as unknown as ReturnType<typeof setInterval>);
+    };
+
+    // First chime after a short delay
+    scheduleNext();
+  }
+
+  // ─── Soundscapes ──────────────────────────────────────────────────────────
+
+  /** Home: warm open pad with occasional high chimes */
+  private buildHome(ctx: AudioContext, stoppable: (OscillatorNode | AudioBufferSourceNode)[], disconnectable: AudioNode[]) {
+    // Warm C-pentatonic pad
+    this.createSoftPad(ctx, [130.81, 196.0, 261.63], 0.08, 800, stoppable, disconnectable);
+    // Very soft rain texture
+    this.createRain(ctx, 0.012, 1200, stoppable, disconnectable);
+    // Occasional high pentatonic chimes
+    this.scheduleChimes(ctx, PENTATONIC_HIGH, [6000, 14000], 0.04, stoppable, disconnectable);
+  }
+
+  /** Breathe: ocean-like swells with deep pad */
+  private buildBreathe(ctx: AudioContext, stoppable: (OscillatorNode | AudioBufferSourceNode)[], disconnectable: AudioNode[]) {
+    // Deep A-pentatonic pad
+    this.createSoftPad(ctx, [110.0, 164.81, 220.0], 0.09, 600, stoppable, disconnectable);
+    // Rain as ocean texture
+    this.createRain(ctx, 0.02, 800, stoppable, disconnectable);
+
+    // Breathing LFO on the rain filter — slow swell
+    const rainFilter = ctx.createBiquadFilter();
+    rainFilter.type = "lowpass";
+    rainFilter.frequency.value = 600;
+    rainFilter.Q.value = 0.5;
+    const lfo = ctx.createOscillator();
+    const lfoGain = ctx.createGain();
+    lfo.type = "sine";
+    lfo.frequency.value = 0.15; // ~6.6s cycle — breathing
+    lfoGain.gain.value = 300;
+    lfo.connect(lfoGain);
+    lfoGain.connect(rainFilter.frequency);
+    lfo.start();
+    stoppable.push(lfo);
+    disconnectable.push(rainFilter, lfoGain);
+  }
+
+  /** Wisdom: ethereal singing bowls, sparse and spacious */
+  private buildWisdom(ctx: AudioContext, stoppable: (OscillatorNode | AudioBufferSourceNode)[], disconnectable: AudioNode[]) {
+    // High ethereal pad
+    this.createSoftPad(ctx, [261.63, 392.0, 523.25], 0.05, 1200, stoppable, disconnectable);
+    // Very sparse singing bowl chimes
+    this.scheduleChimes(ctx, PENTATONIC_C, [8000, 18000], 0.055, stoppable, disconnectable);
+  }
+
+  /** Journal: soft rain with gentle pad underneath */
+  private buildJournal(ctx: AudioContext, stoppable: (OscillatorNode | AudioBufferSourceNode)[], disconnectable: AudioNode[]) {
+    // Gentle G-pentatonic pad
+    this.createSoftPad(ctx, [196.0, 261.63, 293.66], 0.055, 900, stoppable, disconnectable);
+    // More prominent rain
+    this.createRain(ctx, 0.03, 2500, stoppable, disconnectable);
+    // Very sparse, low chimes
+    this.scheduleChimes(ctx, PENTATONIC_LOW, [10000, 20000], 0.03, stoppable, disconnectable);
+  }
+
+  /** Test: deep, mysterious, introspective */
+  private buildTest(ctx: AudioContext, stoppable: (OscillatorNode | AudioBufferSourceNode)[], disconnectable: AudioNode[]) {
+    // Deep D-pentatonic pad
+    this.createSoftPad(ctx, [146.83, 196.0, 220.0], 0.07, 500, stoppable, disconnectable);
+    // Distant rain/wind
+    this.createRain(ctx, 0.015, 500, stoppable, disconnectable);
+    // Mysterious sparse chimes
+    this.scheduleChimes(ctx, [293.66, 392.0, 440.0, 523.25], [7000, 16000], 0.035, stoppable, disconnectable);
+  }
+
+  /** Profile: warm, content, grounded */
+  private buildProfile(ctx: AudioContext, stoppable: (OscillatorNode | AudioBufferSourceNode)[], disconnectable: AudioNode[]) {
+    // Grounding G-pentatonic pad
+    this.createSoftPad(ctx, [98.0, 146.83, 196.0], 0.07, 700, stoppable, disconnectable);
+    // Very light rain
+    this.createRain(ctx, 0.01, 1800, stoppable, disconnectable);
+    // Warm low chimes
+    this.scheduleChimes(ctx, PENTATONIC_LOW, [9000, 18000], 0.035, stoppable, disconnectable);
+  }
+
+  // ─── One-shot sounds ──────────────────────────────────────────────────────
+
+  playChime(frequency = 528, duration = 3) {
+    if (!this._enabled || !this.ctx || !this.reverb) return;
     const ctx = this.ctx;
     const now = ctx.currentTime;
 
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
+    const partials = [
+      { ratio: 1, vol: 0.07 },
+      { ratio: 2.756, vol: 0.025 },
+      { ratio: 5.404, vol: 0.008 },
+    ];
 
-    osc.type = "sine";
-    osc.frequency.value = frequency;
-    gain.gain.setValueAtTime(0.08, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+    for (const p of partials) {
+      const osc = ctx.createOscillator();
+      osc.type = "sine";
+      osc.frequency.value = frequency * p.ratio;
 
-    osc.connect(gain);
-    gain.connect(this.masterGain);
-    osc.start(now);
-    osc.stop(now + duration);
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(p.vol, now);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+
+      osc.connect(gain);
+      gain.connect(this.dryGain!);
+      gain.connect(this.reverb!);
+      osc.start(now);
+      osc.stop(now + duration + 0.5);
+    }
   }
 
   playSingingBowl(baseFreq = 396) {
-    if (!this._enabled || !this.ctx || !this.masterGain) return;
+    if (!this._enabled || !this.ctx || !this.reverb) return;
     const ctx = this.ctx;
     const now = ctx.currentTime;
 
-    // Fundamental + harmonics, like a real singing bowl
-    const harmonics = [1, 2.76, 4.72];
-    const volumes = [0.06, 0.025, 0.012];
+    // Real singing bowl: inharmonic partials with long decay through reverb
+    const partials = [
+      { ratio: 1, vol: 0.08, decay: 6 },
+      { ratio: 2.756, vol: 0.04, decay: 4.5 },
+      { ratio: 4.567, vol: 0.02, decay: 3.5 },
+      { ratio: 6.724, vol: 0.008, decay: 2.5 },
+    ];
 
-    harmonics.forEach((h, i) => {
+    for (const p of partials) {
       const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
       osc.type = "sine";
-      osc.frequency.value = baseFreq * h;
-      gain.gain.setValueAtTime(volumes[i], now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 4);
+      osc.frequency.value = baseFreq * p.ratio;
+
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(p.vol, now);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + p.decay);
+
       osc.connect(gain);
-      gain.connect(this.masterGain!);
+      gain.connect(this.dryGain!);
+      gain.connect(this.reverb!);
       osc.start(now);
-      osc.stop(now + 4);
-    });
+      osc.stop(now + p.decay + 1);
+    }
   }
 
   playTransition() {
-    if (!this._enabled || !this.ctx || !this.masterGain) return;
+    if (!this._enabled || !this.ctx || !this.reverb) return;
     const ctx = this.ctx;
     const now = ctx.currentTime;
 
-    // Soft ascending tone
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(220, now);
-    osc.frequency.exponentialRampToValueAtTime(440, now + 1.2);
-    gain.gain.setValueAtTime(0.04, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 1.5);
-    osc.connect(gain);
-    gain.connect(this.masterGain!);
-    osc.start(now);
-    osc.stop(now + 1.5);
+    // Soft ascending fifth interval through reverb
+    const notes = [261.63, 392.0]; // C4 → G4
+    for (const freq of notes) {
+      const osc = ctx.createOscillator();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.04, now);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 2);
+
+      osc.connect(gain);
+      gain.connect(this.dryGain!);
+      gain.connect(this.reverb!);
+      osc.start(now);
+      osc.stop(now + 2.5);
+    }
   }
 
   playInhale() {
-    if (!this._enabled || !this.ctx || !this.masterGain) return;
+    if (!this._enabled || !this.ctx || !this.reverb) return;
     const ctx = this.ctx;
     const now = ctx.currentTime;
+
+    // Ascending tone: C4 → G4
     const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
     osc.type = "sine";
-    osc.frequency.setValueAtTime(165, now);
-    osc.frequency.linearRampToValueAtTime(220, now + 3);
-    gain.gain.setValueAtTime(0.04, now);
-    gain.gain.linearRampToValueAtTime(0.06, now + 2);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 3.5);
-    osc.connect(gain);
-    gain.connect(this.masterGain!);
+    osc.frequency.setValueAtTime(196, now); // G3
+    osc.frequency.linearRampToValueAtTime(293.66, now + 3); // D4
+
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(0.04, now + 0.5);
+    gain.gain.setValueAtTime(0.04, now + 2);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 3.5);
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.value = 1000;
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.dryGain!);
+    gain.connect(this.reverb!);
     osc.start(now);
-    osc.stop(now + 3.5);
+    osc.stop(now + 4);
   }
 
   playExhale() {
-    if (!this._enabled || !this.ctx || !this.masterGain) return;
+    if (!this._enabled || !this.ctx || !this.reverb) return;
     const ctx = this.ctx;
     const now = ctx.currentTime;
+
+    // Descending tone: G4 → C4
     const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
     osc.type = "sine";
-    osc.frequency.setValueAtTime(220, now);
-    osc.frequency.linearRampToValueAtTime(165, now + 4);
-    gain.gain.setValueAtTime(0.05, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 4.5);
-    osc.connect(gain);
-    gain.connect(this.masterGain!);
+    osc.frequency.setValueAtTime(293.66, now); // D4
+    osc.frequency.linearRampToValueAtTime(196, now + 4); // G3
+
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(0.04, now + 0.3);
+    gain.gain.setValueAtTime(0.04, now + 3);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 4.5);
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.value = 900;
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.dryGain!);
+    gain.connect(this.reverb!);
     osc.start(now);
-    osc.stop(now + 4.5);
+    osc.stop(now + 5);
   }
 
   dispose() {
@@ -462,9 +573,11 @@ class MeditationAudioEngine {
       this.ctx = null;
     }
     this.masterGain = null;
+    this.reverb = null;
+    this.reverbGain = null;
+    this.dryGain = null;
     this.analyser = null;
   }
 }
 
-// Singleton
 export const audioEngine = new MeditationAudioEngine();
