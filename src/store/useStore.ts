@@ -1,0 +1,268 @@
+"use client";
+
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+import { levels, achievements as achievementDefs } from "@/lib/data";
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+export interface StreakData {
+  count: number;
+  lastDate: string; // YYYY-MM-DD
+}
+
+export interface JournalEntry {
+  id: string;
+  date: string;
+  mood: string;
+  text: string;
+  prompt: string;
+}
+
+export interface BreathingSession {
+  date: string;
+  duration: number;
+  type: string;
+}
+
+export interface AppState {
+  // Streak
+  streak: StreakData;
+  // XP & Level
+  xp: number;
+  // Tests
+  completedTests: string[];
+  // Cards
+  drawnCards: string[];
+  lastCardDate: string;
+  cardsDrawnToday: number;
+  // Journal
+  journalEntries: JournalEntry[];
+  // Breathing
+  breathingSessions: BreathingSession[];
+  // Daily affirmation
+  todayAffirmationDate: string;
+  todayAffirmationIndex: number;
+  // Unlocked achievements
+  unlockedAchievements: string[];
+  // Last visit
+  lastVisit: string;
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function getToday(): string {
+  return new Date().toISOString().split("T")[0];
+}
+
+function generateId(): string {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+
+// ─── Store ───────────────────────────────────────────────────────────────────
+
+interface AppActions {
+  addXP: (amount: number) => void;
+  getLevel: () => { name: string; xp: number; symbol: string; nextXp: number | null; progress: number };
+  checkStreak: () => void;
+  completeTest: (testId: string) => void;
+  drawCard: (cardId: string) => boolean;
+  canDrawCard: () => boolean;
+  saveJournalEntry: (mood: string, text: string, prompt: string) => void;
+  recordBreathing: (duration: number, type: string) => void;
+  getTodayAffirmation: (totalAffirmations: number) => number;
+  checkAchievements: (state: { streak: number; totalBreathing: number; testsCompleted: number; cardsDrawn: number; journalEntries: number }) => string[];
+  reset: () => void;
+}
+
+const initialState: AppState = {
+  streak: { count: 0, lastDate: "" },
+  xp: 0,
+  completedTests: [],
+  drawnCards: [],
+  lastCardDate: "",
+  cardsDrawnToday: 0,
+  journalEntries: [],
+  breathingSessions: [],
+  todayAffirmationDate: "",
+  todayAffirmationIndex: 0,
+  unlockedAchievements: [],
+  lastVisit: "",
+};
+
+export const useStore = create<AppState & AppActions>()(
+  persist(
+    (set, get) => ({
+      ...initialState,
+
+      addXP: (amount: number) => {
+        set((state) => ({ xp: state.xp + amount }));
+      },
+
+      getLevel: () => {
+        const xp = get().xp;
+        let currentLevel = levels[0];
+        let nextLevel = levels[1] || null;
+
+        for (let i = levels.length - 1; i >= 0; i--) {
+          if (xp >= levels[i].xp) {
+            currentLevel = levels[i];
+            nextLevel = levels[i + 1] || null;
+            break;
+          }
+        }
+
+        const progress = nextLevel
+          ? (xp - currentLevel.xp) / (nextLevel.xp - currentLevel.xp)
+          : 1;
+
+        return {
+          name: currentLevel.name,
+          xp: currentLevel.xp,
+          symbol: currentLevel.symbol,
+          nextXp: nextLevel?.xp ?? null,
+          progress: Math.min(progress, 1),
+        };
+      },
+
+      checkStreak: () => {
+        const today = getToday();
+        const { streak } = get();
+
+        if (streak.lastDate === today) return; // Already checked today
+
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toISOString().split("T")[0];
+
+        if (streak.lastDate === yesterdayStr) {
+          // Continue streak
+          set({
+            streak: { count: streak.count + 1, lastDate: today },
+            lastVisit: today,
+          });
+        } else if (streak.lastDate !== today) {
+          // Reset streak (missed a day or first visit)
+          const newCount = streak.lastDate === "" ? 1 : 1;
+          set({
+            streak: { count: newCount, lastDate: today },
+            lastVisit: today,
+          });
+        }
+      },
+
+      completeTest: (testId: string) => {
+        const { completedTests } = get();
+        if (completedTests.includes(testId)) return;
+        set({ completedTests: [...completedTests, testId] });
+        get().addXP(25);
+      },
+
+      drawCard: (cardId: string): boolean => {
+        const { drawnCards, lastCardDate, cardsDrawnToday } = get();
+        const today = getToday();
+
+        const todayDraws = lastCardDate === today ? cardsDrawnToday : 0;
+
+        if (todayDraws >= 3) return false; // Max 3 per day
+
+        const alreadyDrawn = drawnCards.includes(cardId);
+        const newDrawnCards = alreadyDrawn ? drawnCards : [...drawnCards, cardId];
+
+        set({
+          drawnCards: newDrawnCards,
+          lastCardDate: today,
+          cardsDrawnToday: todayDraws + 1,
+        });
+
+        if (!alreadyDrawn) {
+          get().addXP(10);
+        }
+
+        return true;
+      },
+
+      canDrawCard: (): boolean => {
+        const { lastCardDate, cardsDrawnToday } = get();
+        const today = getToday();
+        const todayDraws = lastCardDate === today ? cardsDrawnToday : 0;
+        return todayDraws < 3;
+      },
+
+      saveJournalEntry: (mood: string, text: string, prompt: string) => {
+        const entry: JournalEntry = {
+          id: generateId(),
+          date: new Date().toISOString(),
+          mood,
+          text,
+          prompt,
+        };
+        set((state) => ({
+          journalEntries: [entry, ...state.journalEntries],
+        }));
+        get().addXP(20);
+      },
+
+      recordBreathing: (duration: number, type: string) => {
+        const session: BreathingSession = {
+          date: new Date().toISOString(),
+          duration,
+          type,
+        };
+        set((state) => ({
+          breathingSessions: [session, ...state.breathingSessions],
+        }));
+        get().addXP(15);
+      },
+
+      getTodayAffirmation: (totalAffirmations: number): number => {
+        const today = getToday();
+        const { todayAffirmationDate, todayAffirmationIndex } = get();
+
+        if (todayAffirmationDate === today) {
+          return todayAffirmationIndex;
+        }
+
+        // Use date as seed for deterministic daily selection
+        const dateNum = today.split("-").reduce((acc, part) => acc + parseInt(part), 0);
+        const newIndex = dateNum % totalAffirmations;
+
+        set({
+          todayAffirmationDate: today,
+          todayAffirmationIndex: newIndex,
+        });
+
+        return newIndex;
+      },
+
+      checkAchievements: (stats) => {
+        const { unlockedAchievements } = get();
+        const newlyUnlocked: string[] = [];
+
+        for (const ach of achievementDefs) {
+          if (!unlockedAchievements.includes(ach.id) && ach.condition(stats)) {
+            newlyUnlocked.push(ach.id);
+          }
+        }
+
+        if (newlyUnlocked.length > 0) {
+          set({ unlockedAchievements: [...unlockedAchievements, ...newlyUnlocked] });
+          // Award XP for each new achievement
+          for (const id of newlyUnlocked) {
+            const ach = achievementDefs.find((a: { id: string }) => a.id === id);
+            if (ach) get().addXP(ach.xp);
+          }
+        }
+
+        return newlyUnlocked;
+      },
+
+      reset: () => {
+        set(initialState);
+      },
+    }),
+    {
+      name: "puth-k-sebe-storage",
+    }
+  )
+);
