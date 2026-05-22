@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
+import { getStripe } from "@/lib/stripe"
 import Stripe from "stripe"
 
 // Stripe v22 changed the Subscription type structure
@@ -38,8 +39,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? "")
-
+    const stripe = getStripe();
     let event: Stripe.Event
 
     try {

@@ -181,7 +181,7 @@ export default function WisdomScreen() {
             }`}
             whileTap={canDraw ? { scale: 0.96 } : {}}
           >
-            {canDraw ? "Вытянуть карту" : isPremium ? "Загрузка..." : "Обновите для безлимита"}
+            {canDraw ? "Вытянуть карту" : "Лимит на сегодня исчерпан"}
           </motion.button>
         </div>
 

@@ -145,9 +145,10 @@ export const useStore = create<AppState & AppActions>()(
 
         if (streak.lastDate === today) return; // Already checked today
 
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        const yesterdayStr = yesterday.toISOString().split("T")[0];
+        // Use local date (same as getToday) to avoid UTC offset bugs
+        const yesterdayDate = new Date();
+        yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+        const yesterdayStr = `${yesterdayDate.getFullYear()}-${String(yesterdayDate.getMonth() + 1).padStart(2, "0")}-${String(yesterdayDate.getDate()).padStart(2, "0")}`;
 
         if (streak.lastDate === yesterdayStr) {
           // Continue streak
@@ -155,11 +156,10 @@ export const useStore = create<AppState & AppActions>()(
             streak: { count: streak.count + 1, lastDate: today },
             lastVisit: today,
           });
-        } else if (streak.lastDate !== today) {
+        } else {
           // Reset streak (missed a day or first visit)
-          const newCount = streak.lastDate === "" ? 1 : 1;
           set({
-            streak: { count: newCount, lastDate: today },
+            streak: { count: 1, lastDate: today },
             lastVisit: today,
           });
         }
@@ -241,7 +241,7 @@ export const useStore = create<AppState & AppActions>()(
       saveJournalEntry: (mood: string, text: string, prompt: string) => {
         const entry: JournalEntry = {
           id: generateId(),
-          date: new Date().toISOString(),
+          date: new Date().toLocaleString("sv-SE"), // "YYYY-MM-DD HH:mm:ss" local time
           mood,
           text,
           prompt,
@@ -263,7 +263,7 @@ export const useStore = create<AppState & AppActions>()(
 
       recordBreathing: (duration: number, type: string) => {
         const session: BreathingSession = {
-          date: new Date().toISOString(),
+          date: new Date().toLocaleString("sv-SE"), // "YYYY-MM-DD HH:mm:ss" local time
           duration,
           type,
         };

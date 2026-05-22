@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
-import Stripe from "stripe"
+import { getStripe } from "@/lib/stripe"
 
 export async function POST() {
   try {
@@ -26,9 +26,8 @@ export async function POST() {
       )
     }
 
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? "")
-
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
+    const stripe = getStripe();
 
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: subscription.stripeCustomerId,

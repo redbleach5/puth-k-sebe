@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { z } from "zod"
-import Stripe from "stripe"
+import { getStripe } from "@/lib/stripe"
 
 const checkoutSchema = z.object({
   priceId: z.string().min(1, "Укажите тарифный план"),
@@ -25,8 +25,7 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json()
     const validatedData = checkoutSchema.parse(body)
-
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? "")
+    const stripe = getStripe();
 
     // Get or create Stripe customer
     let subscription = await db.subscription.findUnique({

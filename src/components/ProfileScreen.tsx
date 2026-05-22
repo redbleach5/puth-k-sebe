@@ -19,6 +19,7 @@ export default function ProfileScreen({ onShowAuthModal, onShowPremiumModal }: P
   const { featureLimits, getFeatureLimit } = usePremium();
   const [showReset, setShowReset] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [portalError, setPortalError] = useState<string | null>(null);
   const level = getLevel();
 
   const handleLogout = async () => {
@@ -49,14 +50,17 @@ export default function ProfileScreen({ onShowAuthModal, onShowPremiumModal }: P
     : null;
 
   const handleManageSubscription = async () => {
+    setPortalError(null);
     try {
       const res = await fetch("/api/subscription/portal", { method: "POST" });
       const data = await res.json();
       if (data.portalUrl) {
         window.location.href = data.portalUrl;
+      } else {
+        setPortalError(data.error || "Не удалось открыть управление подпиской");
       }
     } catch {
-      // silently fail
+      setPortalError("Произошла ошибка. Попробуйте позже.");
     }
   };
 
@@ -190,12 +194,17 @@ export default function ProfileScreen({ onShowAuthModal, onShowPremiumModal }: P
           )}
 
           {isPremium ? (
-            <button
-              onClick={handleManageSubscription}
-              className="h-9 px-4 rounded-lg border border-[#C9A96E]/25 bg-[#C9A96E]/[0.06] text-[13px] text-foreground/70 font-normal hover:bg-[#C9A96E]/[0.12] hover:border-[#C9A96E]/35 transition-all duration-300 cursor-pointer"
-            >
-              Управлять подпиской
-            </button>
+            <>
+              {portalError && (
+                <p className="text-[12px] text-red-500/70 mb-2">{portalError}</p>
+              )}
+              <button
+                onClick={handleManageSubscription}
+                className="h-9 px-4 rounded-lg border border-[#C9A96E]/25 bg-[#C9A96E]/[0.06] text-[13px] text-foreground/70 font-normal hover:bg-[#C9A96E]/[0.12] hover:border-[#C9A96E]/35 transition-all duration-300 cursor-pointer"
+              >
+                Управлять подпиской
+              </button>
+            </>
           ) : (
             <button
               onClick={onShowPremiumModal}
