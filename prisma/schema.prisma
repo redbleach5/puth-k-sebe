@@ -23,6 +23,7 @@ model User {
   // NextAuth relations
   accounts      Account[]
   sessions      Session[]
+  payments      Payment[]
 
   // User progress (synced from client)
   progress      UserProgress?
@@ -95,6 +96,8 @@ model Payment {
   currency             String   @default("rub")
   status               String   @default("pending") // pending, succeeded, failed, refunded
   description          String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   createdAt            DateTime @default(now())
 }

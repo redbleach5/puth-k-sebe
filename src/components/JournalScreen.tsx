@@ -27,6 +27,7 @@ export default function JournalScreen() {
 
   const journalLimit = getFeatureLimit("journalEntries");
   const isAtLimit = !isPremium && journalEntries.length >= journalLimit;
+  const isNearLimit = !isPremium && !isAtLimit && journalEntries.length >= journalLimit - 3;
 
   const today = new Date();
   const dayOfYear = Math.floor((today.getTime() - new Date(today.getFullYear(), 0, 0).getTime()) / 86400000);
@@ -53,13 +54,27 @@ export default function JournalScreen() {
 
       <div className="relative w-full max-w-3xl z-10">
         <h2 className="text-2xl sm:text-3xl font-light text-foreground mb-1">Дневник</h2>
-        <p className="text-[15px] text-foreground/80 font-normal mb-5">Запишите то, что чувствуете</p>
+        <p className="text-[15px] text-foreground/80 font-normal mb-5">
+          Запишите то, что чувствуете
+          {!isPremium && journalEntries.length > 0 && (
+            <span className="text-[13px] text-foreground/55 ml-2">
+              {journalEntries.length}/{journalLimit} записей
+            </span>
+          )}
+        </p>
 
         {/* Journal limit notice */}
         {isAtLimit && (
           <div className="mb-5 p-4 rounded-xl border border-[#C9A96E]/20 bg-[#C9A96E]/[0.05]">
             <p className="text-[14px] text-foreground/75 font-normal">
-              Вы достигли лимита бесплатных записей ({journalLimit}). Оформите подписку для безлимитного дневника.
+              Вы достигли лимита бесплатных записей ({journalEntries.length}/{journalLimit}). Оформите подписку для безлимитного дневника.
+            </p>
+          </div>
+        )}
+        {!isAtLimit && isNearLimit && (
+          <div className="mb-5 p-3 rounded-xl border border-[#C9A96E]/10 bg-[#C9A96E]/[0.03]">
+            <p className="text-[13px] text-foreground/65 font-normal">
+              Осталось {journalLimit - journalEntries.length} бесплатных записей из {journalLimit}. Подписка открывает безлимит.
             </p>
           </div>
         )}

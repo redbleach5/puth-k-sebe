@@ -13,6 +13,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/components/AuthProvider";
 
+// Check if Google OAuth is configured (env var set at build time)
+const hasGoogleOAuth = !!(process.env.NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED);
+
 type Tab = "login" | "register";
 
 interface AuthModalProps {
@@ -275,7 +278,8 @@ export default function AuthModal({ open, onOpenChange }: AuthModalProps) {
             <div className="flex-1 h-px bg-[#E0D8CC]/40" />
           </div>
 
-          {/* Google sign in */}
+          {/* Google sign in — only shown if Google OAuth is configured */}
+          {hasGoogleOAuth && (
           <button
             onClick={handleGoogleLogin}
             className="h-11 w-full flex items-center justify-center gap-2.5 rounded-lg border border-[#E0D8CC]/50 bg-white/60 text-[14px] text-foreground/75 font-normal transition-all duration-300 hover:bg-white/80 hover:border-[#E0D8CC]/70 cursor-pointer"
@@ -288,6 +292,7 @@ export default function AuthModal({ open, onOpenChange }: AuthModalProps) {
             </svg>
             Войти через Google
           </button>
+          )}
         </div>
       </DialogContent>
     </Dialog>

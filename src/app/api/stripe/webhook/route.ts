@@ -18,6 +18,14 @@ function getCustomerId(customer: string | { id: string }): string {
   return typeof customer === "string" ? customer : customer.id
 }
 
+function getPaymentIntentId(paymentIntent: unknown): string | undefined {
+  if (typeof paymentIntent === "string") return paymentIntent
+  if (paymentIntent && typeof paymentIntent === "object" && "id" in paymentIntent) {
+    return (paymentIntent as { id: string }).id
+  }
+  return undefined
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.text()
@@ -64,11 +72,8 @@ export async function POST(req: NextRequest) {
             session.subscription as string
           ) as unknown as StripeSubscriptionData
 
-          // Use upsert with userId as the unique key.
-          // The Subscription record should already exist (created at registration or checkout init),
-          // but we handle the create case as well for robustness.
           const customerId = getCustomerId(stripeSubscription.customer);
-          
+
           // First try to update existing subscription
           const existingSub = await db.subscription.findUnique({
             where: { userId },
@@ -153,7 +158,7 @@ export async function POST(req: NextRequest) {
         await db.subscription.update({
           where: { userId: existingSub.userId },
           data: {
-            status: "free",
+            status: "canceled",
             plan: "free",
             stripeSubscriptionId: null,
             stripePriceId: null,
@@ -165,7 +170,9 @@ export async function POST(req: NextRequest) {
 
       case "invoice.payment_succeeded": {
         const invoice = event.data.object as unknown as Record<string, unknown>
-        const customerId = invoice.customer as string
+        const customerId = typeof invoice.customer === "string" ? invoice.customer : (invoice.customer as { id: string })?.id
+
+        if (!customerId) break
 
         const existingSub = await db.subscription.findUnique({
           where: { stripeCustomerId: customerId },
@@ -181,23 +188,34 @@ export async function POST(req: NextRequest) {
           },
         })
 
-        // Create payment record
-        await db.payment.create({
-          data: {
-            userId: existingSub.userId,
-            stripePaymentIntentId: (invoice.payment_intent as string) ?? undefined,
-            amount: invoice.amount_paid as number,
-            currency: invoice.currency as string,
-            status: "succeeded",
-            description: `Оплата подписки — ${existingSub.plan === "yearly" ? "Годовая" : "Месячная"}`,
-          },
-        })
+        // Create payment record with idempotency check
+        const paymentIntentId = getPaymentIntentId(invoice.payment_intent)
+        if (paymentIntentId) {
+          // Check if payment already exists (idempotency)
+          const existingPayment = await db.payment.findUnique({
+            where: { stripePaymentIntentId: paymentIntentId },
+          })
+          if (!existingPayment) {
+            await db.payment.create({
+              data: {
+                userId: existingSub.userId,
+                stripePaymentIntentId: paymentIntentId,
+                amount: invoice.amount_paid as number,
+                currency: invoice.currency as string,
+                status: "succeeded",
+                description: `Оплата подписки — ${existingSub.plan === "yearly" ? "Годовая" : "Месячная"}`,
+              },
+            })
+          }
+        }
         break
       }
 
       case "invoice.payment_failed": {
         const invoice = event.data.object as unknown as Record<string, unknown>
-        const customerId = invoice.customer as string
+        const customerId = typeof invoice.customer === "string" ? invoice.customer : (invoice.customer as { id: string })?.id
+
+        if (!customerId) break
 
         const existingSub = await db.subscription.findUnique({
           where: { stripeCustomerId: customerId },
@@ -213,17 +231,26 @@ export async function POST(req: NextRequest) {
           },
         })
 
-        // Create failed payment record
-        await db.payment.create({
-          data: {
-            userId: existingSub.userId,
-            stripePaymentIntentId: (invoice.payment_intent as string) ?? undefined,
-            amount: invoice.amount_due as number,
-            currency: invoice.currency as string,
-            status: "failed",
-            description: `Неудачная попытка оплаты — ${existingSub.plan === "yearly" ? "Годовая" : "Месячная"}`,
-          },
-        })
+        // Create failed payment record with idempotency check
+        const paymentIntentId = getPaymentIntentId(invoice.payment_intent)
+        if (paymentIntentId) {
+          // Check if payment already exists (idempotency)
+          const existingPayment = await db.payment.findUnique({
+            where: { stripePaymentIntentId: paymentIntentId },
+          })
+          if (!existingPayment) {
+            await db.payment.create({
+              data: {
+                userId: existingSub.userId,
+                stripePaymentIntentId: paymentIntentId,
+                amount: invoice.amount_due as number,
+                currency: invoice.currency as string,
+                status: "failed",
+                description: `Неудачная попытка оплаты — ${existingSub.plan === "yearly" ? "Годовая" : "Месячная"}`,
+              },
+            })
+          }
+        }
         break
       }
 

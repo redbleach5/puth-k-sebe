@@ -4,8 +4,9 @@ import GoogleProvider from "next-auth/providers/google"
 import { compare } from "bcryptjs"
 import { db } from "@/lib/db"
 
-export const authOptions: NextAuthOptions = {
-  providers: [
+// Build providers list — Google is only added if credentials are configured
+const getProviders = () => {
+  const providersList = [
     CredentialsProvider({
       name: "credentials",
       credentials: {
@@ -44,11 +45,21 @@ export const authOptions: NextAuthOptions = {
         }
       },
     }),
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID ?? "",
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
-    }),
-  ],
+  ] as const
+
+  // Conditionally add Google OAuth if credentials are available
+  if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+    return [...providersList, GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    })]
+  }
+
+  return [...providersList]
+}
+
+export const authOptions: NextAuthOptions = {
+  providers: getProviders(),
 
   session: {
     strategy: "jwt",

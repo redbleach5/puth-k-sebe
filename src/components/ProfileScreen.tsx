@@ -34,7 +34,11 @@ export default function ProfileScreen({ onShowAuthModal, onShowPremiumModal }: P
     ? subscription?.plan === "yearly"
       ? "Годовая подписка"
       : "Ежемесячная подписка"
-    : "Бесплатный план";
+    : subscription?.status === "past_due"
+      ? "Подписка просрочена"
+      : subscription?.status === "canceled"
+        ? "Подписка отменена"
+        : "Бесплатный план";
 
   const renewalDate = subscription?.currentPeriodEnd
     ? new Date(subscription.currentPeriodEnd).toLocaleDateString("ru-RU", {
@@ -142,6 +146,25 @@ export default function ProfileScreen({ onShowAuthModal, onShowPremiumModal }: P
               Продление: {renewalDate}
               {subscription?.cancelAtPeriodEnd && " · Отменена"}
             </p>
+          )}
+
+          {/* Show payment issue warning */}
+          {!isPremium && (subscription?.status === "past_due" || subscription?.status === "canceled") && (
+            <div className="mb-3 p-3 rounded-lg bg-[#D4875A]/[0.08] border border-[#D4875A]/15">
+              <p className="text-[13px] text-[#D4875A]/80 font-normal">
+                {subscription?.status === "past_due"
+                  ? "Последний платёж не прошёл. Оплатите задолженность, чтобы восстановить доступ."
+                  : "Подписка отменена и истёк срок действия."}
+              </p>
+              {subscription?.status === "past_due" && (
+                <button
+                  onClick={handleManageSubscription}
+                  className="mt-2 text-[12px] text-[#D4875A] font-medium hover:underline cursor-pointer"
+                >
+                  Управлять оплатой
+                </button>
+              )}
+            </div>
           )}
 
           {/* Free tier limits overview */}

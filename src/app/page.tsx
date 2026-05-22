@@ -122,6 +122,15 @@ export default function MeditationApp() {
     registerPaywallCallback(() => setShowPremiumModal(true));
   }, []);
 
+  // Handle Stripe redirect — refresh subscription after successful payment
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("subscription") === "success") {
+      // Clean up URL
+      window.history.replaceState({}, "", "/");
+    }
+  }, []);
+
   // Wait for client-side mount + store hydration to prevent hydration mismatches
   useEffect(() => {
     setMounted(true);

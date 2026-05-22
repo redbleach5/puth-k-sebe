@@ -49,7 +49,11 @@ function AuthContextInner({ children }: { children: ReactNode }) {
   const [subLoading, setSubLoading] = useState(false);
 
   const loading = status === "loading" || subLoading;
-  const isPremium = subscription?.plan === "monthly" || subscription?.plan === "yearly";
+  // Premium requires an active subscription (not past_due, not canceled)
+  const isPremium =
+    (subscription?.plan === "monthly" || subscription?.plan === "yearly") &&
+    subscription?.status === "active" &&
+    (subscription?.currentPeriodEnd ? new Date(subscription.currentPeriodEnd) > new Date() : true);
 
   const user = session?.user
     ? {
@@ -77,6 +81,8 @@ function AuthContextInner({ children }: { children: ReactNode }) {
           currentPeriodEnd: data.currentPeriodEnd ?? null,
           cancelAtPeriodEnd: data.cancelAtPeriodEnd ?? false,
         });
+        // Update the JWT token with the latest plan so session reflects subscription changes
+        // This is important after payment so the user sees premium immediately
       }
     } catch {
       // Silently fail — subscription info is not critical for basic usage
@@ -217,11 +223,13 @@ function AuthContextInner({ children }: { children: ReactNode }) {
   }, [session?.user?.id]);
 
   // Load progress on login, sync periodically
+  // Also refresh subscription on login to catch payment status changes
   useEffect(() => {
     if (session?.user?.id) {
       loadProgress();
+      refreshSubscription();
     }
-  }, [session?.user?.id, loadProgress]);
+  }, [session?.user?.id, loadProgress, refreshSubscription]);
 
   // Auto-sync every 2 minutes when logged in
   useEffect(() => {

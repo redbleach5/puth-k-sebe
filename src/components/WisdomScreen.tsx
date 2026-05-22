@@ -74,7 +74,7 @@ export default function WisdomScreen() {
           </div>
           <span className="text-[13px] text-foreground/72 font-normal">
             {isPremium
-              ? `${todayDraws} вытянуть сегодня · безлимит`
+              ? `${todayDraws} карт сегодня · безлимит`
               : remainingDraws > 0
                 ? `${remainingDraws} осталось сегодня`
                 : "Лимит на сегодня исчерпан"
