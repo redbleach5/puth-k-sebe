@@ -10,6 +10,7 @@ import WisdomScreen from "@/components/WisdomScreen";
 import JournalScreen from "@/components/JournalScreen";
 import ProfileScreen from "@/components/ProfileScreen";
 import { useStore } from "@/store/useStore";
+import OnboardingHints from "@/components/OnboardingHints";
 
 // Ambient floating particles (canvas-based)
 function AmbientCanvas() {
@@ -95,15 +96,15 @@ export default function MeditationApp() {
 
       <AmbientCanvas />
 
-      {/* Main content */}
-      <div className="relative" style={{ zIndex: 2 }}>
+      {/* Main content — offset for desktop sidebar */}
+      <div className="relative lg:ml-[72px]" style={{ zIndex: 2 }}>
         <AnimatePresence mode="wait">
           <motion.div
             key={activeScreen}
-            initial={{ opacity: 0, y: 8 }}
+            initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.4, ease: "easeInOut" }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.35, ease: "easeInOut" }}
           >
             {activeScreen === "home" && <HomeScreen onNavigate={handleHomeNavigate} />}
             {activeScreen === "breathe" && <BreatheScreen />}
@@ -115,8 +116,11 @@ export default function MeditationApp() {
         </AnimatePresence>
       </div>
 
-      {/* Bottom Navigation */}
+      {/* Navigation */}
       <BottomNav active={activeScreen} onChange={setActiveScreen} />
+
+      {/* Onboarding hints overlay */}
+      <OnboardingHints />
     </div>
   );
 }

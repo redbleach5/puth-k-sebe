@@ -56,7 +56,7 @@
   --secondary: #E8E2D8;
   --secondary-foreground: #2C2C2C;
   --muted: #F0EBE3;
-  --muted-foreground: #8A8478;
+  --muted-foreground: #7A7468;
   --accent: #C9A96E;
   --accent-foreground: #2C2C2C;
   --destructive: oklch(0.577 0.245 27.325);
@@ -84,6 +84,9 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-feature-settings: "liga" 1, "kern" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }
 
@@ -97,9 +100,19 @@
   animation: gentle-pulse 4s ease-in-out infinite;
 }
 
+/* Subtle float animation */
+@keyframes subtle-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+.subtle-float {
+  animation: subtle-float 6s ease-in-out infinite;
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
-  width: 3px;
+  width: 4px;
 }
 
 ::-webkit-scrollbar-track {
@@ -123,7 +136,7 @@
 
 /* Textarea */
 textarea::placeholder {
-  color: rgba(138, 132, 120, 0.25);
+  color: rgba(138, 132, 120, 0.35);
 }
 
 textarea:focus {
@@ -153,4 +166,65 @@ button {
   .safe-bottom {
     padding-bottom: env(safe-area-inset-bottom);
   }
+}
+
+/* Glass effect for cards */
+.glass-card {
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(224, 216, 204, 0.4);
+}
+
+.glass-card-subtle {
+  background: rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(224, 216, 204, 0.25);
+}
+
+/* Desktop sidebar transition */
+.sidebar-transition {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Onboarding pulse for first-time hints */
+@keyframes hint-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(201, 169, 110, 0); }
+  50% { box-shadow: 0 0 0 6px rgba(201, 169, 110, 0.12); }
+}
+
+.hint-glow {
+  animation: hint-glow 2.5s ease-in-out infinite;
+}
+
+/* Premium divider */
+.premium-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(201, 169, 110, 0.25), transparent);
+}
+
+/* Reading-optimized body text */
+.body-text {
+  font-size: 15px;
+  line-height: 1.75;
+  color: rgba(44, 44, 44, 0.72);
+  font-weight: 300;
+}
+
+/* Label text — always readable */
+.label-text {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(122, 116, 104, 0.55);
+  font-weight: 400;
+}
+
+/* Caption — supporting text */
+.caption-text {
+  font-size: 12px;
+  color: rgba(122, 116, 104, 0.6);
+  font-weight: 300;
+  line-height: 1.6;
 }

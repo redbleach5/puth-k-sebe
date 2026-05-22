@@ -232,7 +232,7 @@ export const oracleCards: OracleCard[] = [
     color: "#5B8DB8",
   },
   {
-    id: "card-17", name: "Пламя", symbol: "🔥",
+    id: "card-17", name: "Пламя", symbol: "✺",
     meaning: "Ваша страсть — ваш компас.",
     deepMessage: "То, что зажигает вас — не случайность. Это сигнал из глубины: «Вот он, твой путь». Не игнорируйте пламя — оно не обманывает. Следуйте за ним, даже если путь страшит.",
     but: "Но помните: пламя может обжечь, если подойти слишком близко. Учитесь танцевать с огнём, а не сгорать в нём.",
@@ -267,7 +267,7 @@ export const oracleCards: OracleCard[] = [
     color: "#7A8B6F",
   },
   {
-    id: "card-22", name: "Маска", symbol: "🎭",
+    id: "card-22", name: "Маска", symbol: "⊘",
     meaning: "Кто вы — когда никто не смотрит?",
     deepMessage: "Маски полезны — но не стоит забывать лицо под ними. Настоящая свобода — не в том, чтобы носить маску, а в том, чтобы иметь выбор: когда надеть, а когда снять.",
     but: "Но помните: маска, носимая слишком долго, прирастает к лицу. Снимайте её иногда — дышите.",
@@ -494,7 +494,7 @@ export const tests: TestData[] = [
         options: [
           { label: "Слабость", symbol: "▽", value: 0 },
           { label: "Громкость", symbol: "♬", value: 1 },
-          { label: "Лицемерие", symbol: "🎭", value: 2 },
+          { label: "Лицемерие", symbol: "⊘", value: 2 },
           { label: "Эгоизм", symbol: "◉", value: 3 },
         ],
       },
@@ -808,6 +808,6 @@ export const achievements: AchievementDef[] = [
   { id: "all-cards", name: "Хранитель мудрости", description: "Соберите все 32 карты", symbol: "⊛", xp: 100, condition: (s) => s.cardsDrawn >= 32 },
   { id: "first-journal", name: "Первая запись", description: "Сделайте первую запись в дневник", symbol: "✎", xp: 10, condition: (s) => s.journalEntries >= 1 },
   { id: "journal-7", name: "Недельная рефлексия", description: "Напишите 7 записей в дневник", symbol: "❋", xp: 40, condition: (s) => s.journalEntries >= 7 },
-  { id: "streak-3", name: "Три дня подряд", description: "Поддерживайте streak 3 дня", symbol: "🔥", xp: 20, condition: (s) => s.streak >= 3 },
+  { id: "streak-3", name: "Три дня подряд", description: "Поддерживайте streak 3 дня", symbol: "◎", xp: 20, condition: (s) => s.streak >= 3 },
   { id: "streak-7", name: "Неделя осознанности", description: "Поддерживайте streak 7 дней", symbol: "✦", xp: 50, condition: (s) => s.streak >= 7 },
 ];
