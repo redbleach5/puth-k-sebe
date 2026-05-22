@@ -9,10 +9,13 @@ import TestScreen from "@/components/TestScreen";
 import WisdomScreen from "@/components/WisdomScreen";
 import JournalScreen from "@/components/JournalScreen";
 import ProfileScreen from "@/components/ProfileScreen";
+import AuthModal from "@/components/AuthModal";
+import PremiumModal from "@/components/PremiumModal";
 import { useStore } from "@/store/useStore";
 import OnboardingHints from "@/components/OnboardingHints";
 import AudioToggle from "@/components/AudioToggle";
 import { useAudio } from "@/components/AudioProvider";
+import { registerPaywallCallback } from "@/hooks/use-premium";
 import type { SoundscapeId } from "@/lib/audioEngine";
 
 // Ambient floating particles (canvas-based)
@@ -110,6 +113,15 @@ export default function MeditationApp() {
   const { checkStreak, _hasHydrated } = useStore();
   const { switchSoundscape, playTransition } = useAudio();
 
+  // Modal state
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
+
+  // Register the paywall callback so usePremium().showPaywall() can open the modal
+  useEffect(() => {
+    registerPaywallCallback(() => setShowPremiumModal(true));
+  }, []);
+
   // Wait for client-side mount + store hydration to prevent hydration mismatches
   useEffect(() => {
     setMounted(true);
@@ -167,12 +179,19 @@ export default function MeditationApp() {
             exit={{ opacity: 0, y: -6 }}
             transition={{ duration: 0.35, ease: "easeInOut" }}
           >
-            {activeScreen === "home" && <HomeScreen onNavigate={handleHomeNavigate} />}
+            {activeScreen === "home" && (
+              <HomeScreen onNavigate={handleHomeNavigate} onShowAuthModal={() => setShowAuthModal(true)} />
+            )}
             {activeScreen === "breathe" && <BreatheScreen />}
             {activeScreen === "test" && <TestScreen />}
             {activeScreen === "wisdom" && <WisdomScreen />}
             {activeScreen === "journal" && <JournalScreen />}
-            {activeScreen === "profile" && <ProfileScreen />}
+            {activeScreen === "profile" && (
+              <ProfileScreen
+                onShowAuthModal={() => setShowAuthModal(true)}
+                onShowPremiumModal={() => setShowPremiumModal(true)}
+              />
+            )}
           </motion.div>
         </AnimatePresence>
       </div>
@@ -185,6 +204,12 @@ export default function MeditationApp() {
 
       {/* Onboarding hints overlay */}
       <OnboardingHints />
+
+      {/* Auth Modal */}
+      <AuthModal open={showAuthModal} onOpenChange={setShowAuthModal} />
+
+      {/* Premium Modal */}
+      <PremiumModal open={showPremiumModal} onOpenChange={setShowPremiumModal} />
     </div>
   );
 }

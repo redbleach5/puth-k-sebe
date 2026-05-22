@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import "./globals.css";
 import { AudioProvider } from "@/components/AudioProvider";
+import { AuthProvider } from "@/components/AuthProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -26,9 +27,11 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} antialiased bg-background text-foreground overflow-x-hidden`}
       >
-        <AudioProvider>
-          {children}
-        </AudioProvider>
+        <AuthProvider>
+          <AudioProvider>
+            {children}
+          </AudioProvider>
+        </AuthProvider>
       </body>
     </html>
   );

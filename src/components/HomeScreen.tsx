@@ -2,15 +2,18 @@
 
 import { motion } from "framer-motion";
 import { useStore } from "@/store/useStore";
+import { useAuth } from "@/components/AuthProvider";
 import { affirmations, tests, dailyThoughts } from "@/lib/data";
 import { WaveBottom, MandalaRing, FlowingCurves, LeafAccent, SacredGeometry, OrganicBlob, MountainSilhouette, ZenLines } from "@/components/SvgDecor";
 
-export default function HomeScreen({
-  onNavigate,
-}: {
+interface HomeScreenProps {
   onNavigate: (screen: "breathe" | "test" | "wisdom" | "journal") => void;
-}) {
+  onShowAuthModal?: () => void;
+}
+
+export default function HomeScreen({ onNavigate, onShowAuthModal }: HomeScreenProps) {
   const { streak, xp, getTodayAffirmation, completedTests, breathingSessions, journalEntries, drawnCards, getLevel } = useStore();
+  const { user, isPremium } = useAuth();
   const level = getLevel();
   const affIndex = getTodayAffirmation(affirmations.length);
   const todayAffirmation = affirmations[affIndex];
@@ -47,19 +50,37 @@ export default function HomeScreen({
         <div className="flex items-center justify-between mb-5">
           <div>
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-light text-foreground tracking-tight">
-              {greeting}
+              {greeting}{user?.name ? `, ${user.name}` : ""}
             </h1>
             <p className="text-[14px] text-foreground/75 font-normal mt-1">
               {level.name} · {xp} XP
             </p>
           </div>
-          <motion.div
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl premium-card"
-            whileTap={{ scale: 0.95 }}
-          >
-            <span className="text-sm text-[#C9A96E]">{streak.count > 0 ? "○" : "·"}</span>
-            <span className="text-[14px] font-normal text-foreground/80">{streak.count} дн.</span>
-          </motion.div>
+          <div className="flex items-center gap-2">
+            {/* Auth button */}
+            {!user && onShowAuthModal && (
+              <motion.button
+                onClick={onShowAuthModal}
+                className="px-3 py-1.5 rounded-lg border border-[#C9A96E]/20 text-[12px] text-foreground/55 font-normal hover:text-foreground/75 hover:border-[#C9A96E]/35 transition-all duration-300 cursor-pointer"
+                whileTap={{ scale: 0.95 }}
+              >
+                Войти
+              </motion.button>
+            )}
+            {/* Premium badge */}
+            {isPremium && (
+              <span className="px-2.5 py-1 rounded-full bg-[#C9A96E]/10 border border-[#C9A96E]/20 text-[10px] text-[#C9A96E] font-medium tracking-wider">
+                ПРЕМИУМ
+              </span>
+            )}
+            <motion.div
+              className="flex items-center gap-2 px-3.5 py-2 rounded-xl premium-card"
+              whileTap={{ scale: 0.95 }}
+            >
+              <span className="text-sm text-[#C9A96E]">{streak.count > 0 ? "○" : "·"}</span>
+              <span className="text-[14px] font-normal text-foreground/80">{streak.count} дн.</span>
+            </motion.div>
+          </div>
         </div>
 
         {/* Streak message */}

@@ -4,12 +4,57 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { achievements, levels, tests, oracleCards } from "@/lib/data";
 import { useStore } from "@/store/useStore";
+import { useAuth } from "@/components/AuthProvider";
+import { usePremium } from "@/hooks/use-premium";
 import { MandalaRing, WaveBottom, SacredGeometry, DotGrid } from "@/components/SvgDecor";
 
-export default function ProfileScreen() {
+interface ProfileScreenProps {
+  onShowAuthModal?: () => void;
+  onShowPremiumModal?: () => void;
+}
+
+export default function ProfileScreen({ onShowAuthModal, onShowPremiumModal }: ProfileScreenProps) {
   const { xp, streak, completedTests, drawnCards, breathingSessions, journalEntries, unlockedAchievements, getLevel, reset } = useStore();
+  const { user, subscription, isPremium, logout } = useAuth();
+  const { featureLimits, getFeatureLimit } = usePremium();
   const [showReset, setShowReset] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const level = getLevel();
+
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    try {
+      await logout();
+    } finally {
+      setLoggingOut(false);
+    }
+  };
+
+  const planLabel = isPremium
+    ? subscription?.plan === "yearly"
+      ? "Годовая подписка"
+      : "Ежемесячная подписка"
+    : "Бесплатный план";
+
+  const renewalDate = subscription?.currentPeriodEnd
+    ? new Date(subscription.currentPeriodEnd).toLocaleDateString("ru-RU", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      })
+    : null;
+
+  const handleManageSubscription = async () => {
+    try {
+      const res = await fetch("/api/subscription/portal", { method: "POST" });
+      const data = await res.json();
+      if (data.portalUrl) {
+        window.location.href = data.portalUrl;
+      }
+    } catch {
+      // silently fail
+    }
+  };
 
   return (
     <div className="relative flex flex-col items-center px-4 sm:px-6 lg:px-10 pt-5 lg:pt-8 pb-24 lg:pb-8 min-h-screen">
@@ -22,9 +67,125 @@ export default function ProfileScreen() {
         <h2 className="text-2xl sm:text-3xl font-light text-foreground mb-1">Профиль</h2>
         <p className="text-[15px] text-foreground/80 font-normal mb-5">Ваш путь</p>
 
+        {/* User info section */}
+        {user ? (
+          <motion.div
+            className="p-5 lg:p-6 rounded-xl premium-card-elevated mb-5"
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#C9A96E]/20 to-[#7A8B6F]/20 border border-[#C9A96E]/20 flex items-center justify-center shrink-0">
+                <span className="text-lg text-[#C9A96E]">
+                  {user.name?.[0]?.toUpperCase() || user.email[0]?.toUpperCase() || "?"}
+                </span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-[15px] font-medium text-foreground/90 truncate">
+                  {user.name || "Пользователь"}
+                </h3>
+                <p className="text-[13px] text-foreground/55 font-normal truncate">{user.email}</p>
+              </div>
+            </div>
+          </motion.div>
+        ) : (
+          <motion.div
+            className="p-5 rounded-xl premium-card mb-5 text-center"
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+          >
+            <p className="text-[14px] text-foreground/65 font-normal mb-3">
+              Войдите, чтобы сохранить прогресс и синхронизировать данные
+            </p>
+            <button
+              onClick={onShowAuthModal}
+              className="h-10 px-6 rounded-lg bg-gradient-to-r from-[#C9A96E]/85 to-[#7A8B6F]/85 text-white text-[14px] font-medium transition-all duration-300 hover:from-[#C9A96E] hover:to-[#7A8B6F] cursor-pointer shadow-sm"
+            >
+              Войти
+            </button>
+          </motion.div>
+        )}
+
+        {/* Subscription status card */}
+        <motion.div
+          className={`p-5 lg:p-6 rounded-xl mb-5 ${
+            isPremium
+              ? "bg-gradient-to-br from-[#C9A96E]/[0.08] to-[#7A8B6F]/[0.06] border border-[#C9A96E]/25"
+              : "premium-card"
+          }`}
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.1 }}
+        >
+          <div className="flex items-center gap-3 mb-3">
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+              isPremium
+                ? "bg-[#C9A96E]/15 border border-[#C9A96E]/25"
+                : "bg-[#E0D8CC]/20 border border-[#E0D8CC]/30"
+            }`}>
+              <span className="text-[16px]">{isPremium ? "✦" : "○"}</span>
+            </div>
+            <div className="flex-1">
+              <h3 className={`text-[15px] font-medium ${isPremium ? "text-[#C9A96E]" : "text-foreground/80"}`}>
+                {isPremium ? "Премиум план" : "Бесплатный план"}
+              </h3>
+              <p className="text-[12px] text-foreground/55 font-normal">
+                {isPremium ? planLabel : "Обновите для полного доступа"}
+              </p>
+            </div>
+          </div>
+
+          {isPremium && renewalDate && (
+            <p className="text-[12px] text-foreground/50 font-normal mb-3">
+              Продление: {renewalDate}
+              {subscription?.cancelAtPeriodEnd && " · Отменена"}
+            </p>
+          )}
+
+          {/* Free tier limits overview */}
+          {!isPremium && (
+            <div className="grid grid-cols-2 gap-2 mb-3">
+              <LimitItem
+                label="Карты в день"
+                value={`${getFeatureLimit("cardDrawsPerDay")}`}
+              />
+              <LimitItem
+                label="Дыхание"
+                value={`${getFeatureLimit("breathingPresets")} из 5`}
+              />
+              <LimitItem
+                label="Тесты"
+                value={`${getFeatureLimit("testsAvailable")} из 5`}
+              />
+              <LimitItem
+                label="Статистика"
+                value={`${getFeatureLimit("statsHistory")} дней`}
+              />
+            </div>
+          )}
+
+          {isPremium ? (
+            <button
+              onClick={handleManageSubscription}
+              className="h-9 px-4 rounded-lg border border-[#C9A96E]/25 bg-[#C9A96E]/[0.06] text-[13px] text-foreground/70 font-normal hover:bg-[#C9A96E]/[0.12] hover:border-[#C9A96E]/35 transition-all duration-300 cursor-pointer"
+            >
+              Управлять подпиской
+            </button>
+          ) : (
+            <button
+              onClick={onShowPremiumModal}
+              className="h-10 px-6 rounded-lg bg-gradient-to-r from-[#C9A96E]/85 to-[#7A8B6F]/85 text-white text-[14px] font-medium transition-all duration-300 hover:from-[#C9A96E] hover:to-[#7A8B6F] cursor-pointer shadow-sm"
+            >
+              Обновить
+            </button>
+          )}
+        </motion.div>
+
         {/* Level card */}
         <motion.div className="p-5 lg:p-6 rounded-xl premium-card-elevated mb-5"
-          initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}
+          initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.2 }}
         >
           <div className="flex items-center gap-4">
             <div className="text-4xl text-[#C9A96E]">{level.symbol}</div>
@@ -95,17 +256,31 @@ export default function ProfileScreen() {
           </div>
         </div>
 
-        {/* Reset */}
+        {/* Actions */}
         <div className="pt-4 border-t border-[#C9A96E]/12">
-          {!showReset ? (
-            <button onClick={() => setShowReset(true)} className="text-[12px] text-foreground/45 font-normal hover:text-foreground/65 transition-colors duration-300 cursor-pointer">Сбросить прогресс</button>
-          ) : (
-            <div className="flex items-center gap-4">
-              <span className="text-[13px] text-foreground/70 font-normal">Точно?</span>
-              <button onClick={() => { reset(); setShowReset(false); }} className="text-[13px] text-red-400/60 font-normal hover:text-red-400/85 transition-colors duration-300 cursor-pointer">Да, сбросить</button>
-              <button onClick={() => setShowReset(false)} className="text-[13px] text-foreground/65 font-normal hover:text-foreground/85 transition-colors duration-300 cursor-pointer">Нет</button>
-            </div>
-          )}
+          <div className="flex flex-col gap-2">
+            {/* Reset progress */}
+            {!showReset ? (
+              <button onClick={() => setShowReset(true)} className="text-[12px] text-foreground/45 font-normal hover:text-foreground/65 transition-colors duration-300 cursor-pointer text-left">Сбросить прогресс</button>
+            ) : (
+              <div className="flex items-center gap-4">
+                <span className="text-[13px] text-foreground/70 font-normal">Точно?</span>
+                <button onClick={() => { reset(); setShowReset(false); }} className="text-[13px] text-red-400/60 font-normal hover:text-red-400/85 transition-colors duration-300 cursor-pointer">Да, сбросить</button>
+                <button onClick={() => setShowReset(false)} className="text-[13px] text-foreground/65 font-normal hover:text-foreground/85 transition-colors duration-300 cursor-pointer">Нет</button>
+              </div>
+            )}
+
+            {/* Logout */}
+            {user && (
+              <button
+                onClick={handleLogout}
+                disabled={loggingOut}
+                className="text-[12px] text-foreground/45 font-normal hover:text-foreground/65 transition-colors duration-300 cursor-pointer text-left disabled:opacity-50"
+              >
+                {loggingOut ? "Выходим..." : "Выйти"}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -118,6 +293,15 @@ function StatBlock({ label, value, symbol }: { label: string; value: string; sym
       <span className="text-[14px] opacity-55 block mb-1">{symbol}</span>
       <span className="text-[15px] font-normal text-foreground/82">{value}</span>
       <p className="text-[10px] text-foreground/65 font-normal mt-0.5 tracking-wider">{label}</p>
+    </div>
+  );
+}
+
+function LimitItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="p-2.5 rounded-lg bg-[#E0D8CC]/10 border border-[#E0D8CC]/15">
+      <p className="text-[11px] text-foreground/50 font-normal mb-0.5">{label}</p>
+      <p className="text-[13px] text-foreground/70 font-medium">{value}</p>
     </div>
   );
 }
