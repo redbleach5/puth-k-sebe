@@ -6,7 +6,7 @@ import { useAuth } from "@/components/AuthProvider";
 // ─── Feature definitions ──────────────────────────────────────────────────
 
 export type PremiumFeature =
-  | "cardDraws"
+  | "cardDrawsPerDay"
   | "journalEntries"
   | "breathingPresets"
   | "testsAvailable"

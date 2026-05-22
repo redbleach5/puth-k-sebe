@@ -230,7 +230,7 @@ function AuthContextInner({ children }: { children: ReactNode }) {
     return () => clearInterval(interval);
   }, [session?.user?.id, syncProgress]);
 
-  // Sync on page unload
+  // Sync on page unload using fetch keepalive (sendBeacon doesn't set Content-Type)
   useEffect(() => {
     if (!session?.user?.id) return;
     const handleUnload = () => {
@@ -248,7 +248,14 @@ function AuthContextInner({ children }: { children: ReactNode }) {
         unlockedAchievements: JSON.stringify(state.unlockedAchievements),
         lastVisit: state.lastVisit,
       });
-      navigator.sendBeacon("/api/progress/sync", body);
+      fetch("/api/progress/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body,
+        keepalive: true,
+      }).catch(() => {
+        // Silently fail — progress sync is non-critical
+      });
     };
     window.addEventListener("beforeunload", handleUnload);
     return () => window.removeEventListener("beforeunload", handleUnload);

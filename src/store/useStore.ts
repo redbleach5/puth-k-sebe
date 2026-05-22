@@ -319,7 +319,7 @@ export const useStore = create<AppState & AppActions>()(
       partialize: (state) => {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { _hasHydrated, ...rest } = state;
-        return rest as AppState;
+        return rest as unknown as AppState;
       },
       onRehydrateStorage: () => {
         return (state) => {

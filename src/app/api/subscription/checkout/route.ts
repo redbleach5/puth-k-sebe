@@ -8,7 +8,7 @@ import Stripe from "stripe"
 const checkoutSchema = z.object({
   priceId: z.string().min(1, "Укажите тарифный план"),
   plan: z.enum(["monthly", "yearly"], {
-    errorMap: () => ({ message: "Выберите тип подписки: monthly или yearly" }),
+    message: "Выберите тип подписки: monthly или yearly",
   }),
 })
 
@@ -26,9 +26,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     const validatedData = checkoutSchema.parse(body)
 
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? "", {
-      apiVersion: "2025-04-30.basil",
-    })
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? "")
 
     // Get or create Stripe customer
     let subscription = await db.subscription.findUnique({
@@ -96,7 +94,7 @@ export async function POST(req: NextRequest) {
     })
   } catch (error) {
     if (error instanceof z.ZodError) {
-      const firstError = error.errors[0]
+      const firstError = error.issues[0]
       return NextResponse.json(
         { error: firstError.message },
         { status: 400 }

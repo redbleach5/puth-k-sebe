@@ -2,6 +2,22 @@ import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import Stripe from "stripe"
 
+// Stripe v22 changed the Subscription type structure
+// Use a mapped type to access snake_case properties
+type StripeSubscriptionData = {
+  id: string
+  customer: string | { id: string }
+  current_period_start: number
+  current_period_end: number
+  cancel_at_period_end: boolean
+  items: { data: Array<{ price: { id: string } }> }
+  status: string
+}
+
+function getCustomerId(customer: string | { id: string }): string {
+  return typeof customer === "string" ? customer : customer.id
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.text()
@@ -14,9 +30,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? "", {
-      apiVersion: "2025-04-30.basil",
-    })
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? "")
 
     let event: Stripe.Event
 
@@ -48,7 +62,7 @@ export async function POST(req: NextRequest) {
         if (session.subscription) {
           const stripeSubscription = await stripe.subscriptions.retrieve(
             session.subscription as string
-          )
+          ) as unknown as StripeSubscriptionData
 
           await db.subscription.upsert({
             where: { userId },
@@ -63,7 +77,7 @@ export async function POST(req: NextRequest) {
             },
             create: {
               userId,
-              stripeCustomerId: stripeSubscription.customer as string,
+              stripeCustomerId: getCustomerId(stripeSubscription.customer),
               stripeSubscriptionId: stripeSubscription.id,
               stripePriceId: stripeSubscription.items.data[0]?.price.id,
               status: "active",
@@ -78,8 +92,8 @@ export async function POST(req: NextRequest) {
       }
 
       case "customer.subscription.updated": {
-        const stripeSubscription = event.data.object as Stripe.Subscription
-        const customerId = stripeSubscription.customer as string
+        const stripeSubscription = event.data.object as unknown as StripeSubscriptionData
+        const customerId = getCustomerId(stripeSubscription.customer)
 
         // Find subscription by Stripe customer ID
         const existingSub = await db.subscription.findUnique({
@@ -110,8 +124,8 @@ export async function POST(req: NextRequest) {
       }
 
       case "customer.subscription.deleted": {
-        const stripeSubscription = event.data.object as Stripe.Subscription
-        const customerId = stripeSubscription.customer as string
+        const stripeSubscription = event.data.object as unknown as StripeSubscriptionData
+        const customerId = getCustomerId(stripeSubscription.customer)
 
         const existingSub = await db.subscription.findUnique({
           where: { stripeCustomerId: customerId },
@@ -133,7 +147,7 @@ export async function POST(req: NextRequest) {
       }
 
       case "invoice.payment_succeeded": {
-        const invoice = event.data.object as Stripe.Invoice
+        const invoice = event.data.object as unknown as Record<string, unknown>
         const customerId = invoice.customer as string
 
         const existingSub = await db.subscription.findUnique({
@@ -154,9 +168,9 @@ export async function POST(req: NextRequest) {
         await db.payment.create({
           data: {
             userId: existingSub.userId,
-            stripePaymentIntentId: invoice.payment_intent as string ?? undefined,
-            amount: invoice.amount_paid,
-            currency: invoice.currency,
+            stripePaymentIntentId: (invoice.payment_intent as string) ?? undefined,
+            amount: invoice.amount_paid as number,
+            currency: invoice.currency as string,
             status: "succeeded",
             description: `Оплата подписки — ${existingSub.plan === "yearly" ? "Годовая" : "Месячная"}`,
           },
@@ -165,7 +179,7 @@ export async function POST(req: NextRequest) {
       }
 
       case "invoice.payment_failed": {
-        const invoice = event.data.object as Stripe.Invoice
+        const invoice = event.data.object as unknown as Record<string, unknown>
         const customerId = invoice.customer as string
 
         const existingSub = await db.subscription.findUnique({
@@ -186,9 +200,9 @@ export async function POST(req: NextRequest) {
         await db.payment.create({
           data: {
             userId: existingSub.userId,
-            stripePaymentIntentId: invoice.payment_intent as string ?? undefined,
-            amount: invoice.amount_due,
-            currency: invoice.currency,
+            stripePaymentIntentId: (invoice.payment_intent as string) ?? undefined,
+            amount: invoice.amount_due as number,
+            currency: invoice.currency as string,
             status: "failed",
             description: `Неудачная попытка оплаты — ${existingSub.plan === "yearly" ? "Годовая" : "Месячная"}`,
           },
