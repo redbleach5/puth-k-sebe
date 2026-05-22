@@ -56,7 +56,7 @@
   --secondary: #E8E2D8;
   --secondary-foreground: #2C2C2C;
   --muted: #F0EBE3;
-  --muted-foreground: #7A7468;
+  --muted-foreground: #6B6558;
   --accent: #C9A96E;
   --accent-foreground: #2C2C2C;
   --destructive: oklch(0.577 0.245 27.325);
@@ -90,60 +90,49 @@
   }
 }
 
-/* Gentle pulse for symbols */
+/* ─── Animations ──────────────────────────────────────────────────────────── */
+
 @keyframes gentle-pulse {
   0%, 100% { opacity: 0.6; }
   50% { opacity: 0.9; }
 }
+.gentle-pulse { animation: gentle-pulse 4s ease-in-out infinite; }
 
-.gentle-pulse {
-  animation: gentle-pulse 4s ease-in-out infinite;
-}
-
-/* Subtle float animation */
 @keyframes subtle-float {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-4px); }
 }
+.subtle-float { animation: subtle-float 6s ease-in-out infinite; }
 
-.subtle-float {
-  animation: subtle-float 6s ease-in-out infinite;
+@keyframes breathe-ring {
+  0%, 100% { transform: scale(1); opacity: 0.15; }
+  50% { transform: scale(1.08); opacity: 0.25; }
+}
+.breathe-ring { animation: breathe-ring 6s ease-in-out infinite; }
+
+@keyframes slow-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.slow-spin { animation: slow-spin 90s linear infinite; }
+
+@keyframes ripple-out {
+  0% { transform: scale(0.8); opacity: 0.12; }
+  100% { transform: scale(1.6); opacity: 0; }
 }
 
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 4px;
-}
+/* ─── Scrollbar ───────────────────────────────────────────────────────────── */
 
-::-webkit-scrollbar-track {
-  background: transparent;
-}
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #C9A96E30; border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: #C9A96E50; }
 
-::-webkit-scrollbar-thumb {
-  background: #C9A96E30;
-  border-radius: 2px;
-}
+::selection { background: #C9A96E30; color: #2C2C2C; }
 
-::-webkit-scrollbar-thumb:hover {
-  background: #C9A96E50;
-}
+textarea::placeholder { color: rgba(107, 101, 88, 0.4); }
+textarea:focus { outline: none; }
 
-/* Selection */
-::selection {
-  background: #C9A96E30;
-  color: #2C2C2C;
-}
-
-/* Textarea */
-textarea::placeholder {
-  color: rgba(138, 132, 120, 0.35);
-}
-
-textarea:focus {
-  outline: none;
-}
-
-/* Line clamp */
 .line-clamp-3 {
   display: -webkit-box;
   -webkit-line-clamp: 3;
@@ -151,24 +140,16 @@ textarea:focus {
   overflow: hidden;
 }
 
-/* Card perspective */
-.perspective-1000 {
-  perspective: 1000px;
-}
+.perspective-1000 { perspective: 1000px; }
 
-/* Smooth transitions for all interactive elements */
-button {
-  -webkit-tap-highlight-color: transparent;
-}
+button { -webkit-tap-highlight-color: transparent; }
 
-/* Safe area padding for bottom nav */
 @supports (padding-bottom: env(safe-area-inset-bottom)) {
-  .safe-bottom {
-    padding-bottom: env(safe-area-inset-bottom);
-  }
+  .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
 }
 
-/* Glass effect for cards */
+/* ─── Glass effects ───────────────────────────────────────────────────────── */
+
 .glass-card {
   background: rgba(255, 255, 255, 0.65);
   backdrop-filter: blur(16px);
@@ -183,48 +164,41 @@ button {
   border: 1px solid rgba(224, 216, 204, 0.25);
 }
 
-/* Desktop sidebar transition */
-.sidebar-transition {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
+/* ─── Onboarding hint glow ────────────────────────────────────────────────── */
 
-/* Onboarding pulse for first-time hints */
 @keyframes hint-glow {
   0%, 100% { box-shadow: 0 0 0 0 rgba(201, 169, 110, 0); }
   50% { box-shadow: 0 0 0 6px rgba(201, 169, 110, 0.12); }
 }
+.hint-glow { animation: hint-glow 2.5s ease-in-out infinite; }
 
-.hint-glow {
-  animation: hint-glow 2.5s ease-in-out infinite;
-}
+/* ─── Premium divider ─────────────────────────────────────────────────────── */
 
-/* Premium divider */
 .premium-divider {
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(201, 169, 110, 0.25), transparent);
+  background: linear-gradient(90deg, transparent, rgba(201, 169, 110, 0.2), transparent);
 }
 
-/* Reading-optimized body text */
+/* ─── Typography system ───────────────────────────────────────────────────── */
+
 .body-text {
   font-size: 15px;
   line-height: 1.75;
-  color: rgba(44, 44, 44, 0.72);
+  color: rgba(44, 44, 44, 0.78);
   font-weight: 300;
 }
 
-/* Label text — always readable */
 .label-text {
   font-size: 11px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: rgba(122, 116, 104, 0.55);
+  color: rgba(107, 101, 88, 0.65);
   font-weight: 400;
 }
 
-/* Caption — supporting text */
 .caption-text {
   font-size: 12px;
-  color: rgba(122, 116, 104, 0.6);
+  color: rgba(107, 101, 88, 0.7);
   font-weight: 300;
   line-height: 1.6;
 }
